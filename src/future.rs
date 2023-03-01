@@ -33,7 +33,9 @@ enum State {
     Disabled,
 }
 
-/// The future for [`InstrumentAwait`].
+/// The future for [`InstrumentAwait`][ia].
+///
+/// [ia]: crate::InstrumentAwait
 #[pin_project(PinnedDrop)]
 pub struct Instrumented<F: Future, const VERBOSE: bool> {
     #[pin]

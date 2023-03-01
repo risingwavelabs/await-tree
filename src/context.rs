@@ -81,7 +81,7 @@ impl std::fmt::Display for TreeContext {
             let elapsed: std::time::Duration = inner.start_time.elapsed().into();
             write!(
                 f,
-                " [{}{:?}]",
+                " [{}{:.3?}]",
                 if depth > 0 && elapsed.as_secs() >= 10 {
                     "!!! "
                 } else {

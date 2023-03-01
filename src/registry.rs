@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::future::Future;
+use std::hash::Hash;
 use std::sync::{Arc, Weak};
 
 use derive_builder::Builder;
@@ -94,6 +96,20 @@ where
         self.contexts
             .iter()
             .filter_map(|(k, v)| v.upgrade().map(|v| (k, v.lock().clone())))
+    }
+
+    /// Get a clone of the await-tree with given key.
+    ///
+    /// Returns `None` if the key does not exist or the tree root has been dropped.
+    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<TreeContext>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.contexts
+            .get(k)
+            .and_then(|v| v.upgrade())
+            .map(|v| v.lock().clone())
     }
 
     /// Remove all the registered await-trees.

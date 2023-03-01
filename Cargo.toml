@@ -11,9 +11,9 @@ license = "Apache-2.0"
 
 [dependencies]
 coarsetime = "0.1"
-compact_str = "0.7"
 derive_builder = "0.12"
-indextree = "4.4"
+flexstr = "0.9"
+indextree = "4"
 itertools = "0.10"
 parking_lot = "0.12"
 pin-project = "1"
@@ -23,7 +23,7 @@ tracing = "0.1"
 [dev-dependencies]
 criterion = { version = "0.4", features = ["async", "async_tokio"] }
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
-tokio = { version = "1", features = ["rt", "time", "macros"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "macros"] }
 
 [[bench]]
 name = "basic"

@@ -14,19 +14,18 @@
 
 use std::future::Future;
 
-use compact_str::CompactString;
-
 mod context;
 mod future;
 mod registry;
 
-pub use context::current_tree;
+pub use context::{current_tree, TreeContext};
+use flexstr::SharedStr;
 pub use future::Instrumented;
-pub use registry::{Config, ConfigBuilder, ConfigBuilderError, Registry};
+pub use registry::{Config, ConfigBuilder, ConfigBuilderError, Registry, TreeRoot};
 
-/// A span in the await-tree.
+/// A cheaply cloneable span in the await-tree.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Span(CompactString);
+pub struct Span(SharedStr);
 
 impl Span {
     pub(crate) fn as_str(&self) -> &str {
@@ -36,7 +35,7 @@ impl Span {
 
 impl<S: AsRef<str>> From<S> for Span {
     fn from(value: S) -> Self {
-        Self(CompactString::new(value))
+        Self(SharedStr::from_ref(value))
     }
 }
 
