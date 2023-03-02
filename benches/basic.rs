@@ -82,7 +82,7 @@ fn bench_basic(c: &mut Criterion) {
 }
 
 fn bench_basic_baseline(c: &mut Criterion) {
-    c.bench_function("basic", |b| {
+    c.bench_function("basic_baseline", |b| {
         b.to_async(runtime()).iter(|| async {
             let config = ConfigBuilder::default().verbose(false).build().unwrap();
             let mut mgr = Registry::new(config);

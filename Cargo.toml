@@ -28,3 +28,13 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "macros"] 
 [[bench]]
 name = "basic"
 harness = false
+
+[profile.bench]
+opt-level = 3
+debug = false
+codegen-units = 1
+lto = 'fat'
+incremental = false
+debug-assertions = false
+overflow-checks = false
+rpath = false
