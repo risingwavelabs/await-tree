@@ -18,6 +18,7 @@ use std::sync::Arc;
 
 use indextree::{Arena, NodeId};
 use itertools::Itertools;
+use parking_lot::{Mutex, MutexGuard};
 
 use crate::Span;
 
@@ -45,15 +46,8 @@ impl SpanNode {
 /// against the current task-local context before trying to update the tree.
 pub(crate) type ContextId = u64;
 
-/// The task-local await-tree context.
 #[derive(Debug, Clone)]
-pub struct TreeContext {
-    /// The id of the context.
-    id: ContextId,
-
-    /// Whether to include the "verbose" span in the tree.
-    verbose: bool,
-
+pub struct Tree {
     /// The arena for allocating span nodes in this context.
     arena: Arena<SpanNode>,
 
@@ -64,7 +58,7 @@ pub struct TreeContext {
     current: NodeId,
 }
 
-impl std::fmt::Display for TreeContext {
+impl std::fmt::Display for Tree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fn fmt_node(
             f: &mut std::fmt::Formatter<'_>,
@@ -123,24 +117,7 @@ impl std::fmt::Display for TreeContext {
     }
 }
 
-impl TreeContext {
-    /// Create a new context.
-    pub(crate) fn new(root_span: Span, verbose: bool) -> Self {
-        static ID: AtomicU64 = AtomicU64::new(0);
-        let id = ID.fetch_add(1, Ordering::SeqCst);
-
-        let mut arena = Arena::new();
-        let root = arena.new_node(SpanNode::new(root_span));
-
-        Self {
-            id,
-            verbose,
-            arena,
-            root,
-            current: root,
-        }
-    }
-
+impl Tree {
     /// Get the count of active span nodes in this context.
     #[cfg(test)]
     pub(crate) fn active_node_count(&self) -> usize {
@@ -214,14 +191,53 @@ impl TreeContext {
         node.remove(&mut self.arena);
     }
 
-    /// Whether the verbose span should be included.
-    pub(crate) fn verbose(&self) -> bool {
-        self.verbose
-    }
-
     /// Get the current span node id.
     pub(crate) fn current(&self) -> NodeId {
         self.current
+    }
+}
+
+/// The task-local await-tree context.
+#[derive(Debug)]
+pub struct TreeContext {
+    /// The id of the context.
+    id: ContextId,
+
+    /// Whether to include the "verbose" span in the tree.
+    verbose: bool,
+
+    ///
+    tree: Mutex<Tree>,
+}
+
+impl TreeContext {
+    /// Create a new context.
+    pub(crate) fn new(root_span: Span, verbose: bool) -> Self {
+        static ID: AtomicU64 = AtomicU64::new(0);
+        let id = ID.fetch_add(1, Ordering::SeqCst);
+
+        let mut arena = Arena::new();
+        let root = arena.new_node(SpanNode::new(root_span));
+
+        Self {
+            id,
+            verbose,
+            tree: Tree {
+                arena,
+                root,
+                current: root,
+            }
+            .into(),
+        }
+    }
+
+    pub(crate) fn tree(&self) -> MutexGuard<'_, Tree> {
+        self.tree.lock()
+    }
+
+    /// Whether the verbose span should be included.
+    pub(crate) fn verbose(&self) -> bool {
+        self.verbose
     }
 }
 
@@ -234,34 +250,26 @@ impl TreeContext {
 }
 
 tokio::task_local! {
-    pub(crate) static CONTEXT: Arc<parking_lot::Mutex<TreeContext>>
+    pub(crate) static CONTEXT: Arc<TreeContext>
 }
 
 pub(crate) fn with_context<F, R>(f: F) -> R
 where
-    F: FnOnce(&mut TreeContext) -> R,
+    F: FnOnce(&TreeContext) -> R,
 {
-    CONTEXT.with(|context| {
-        let mut context = context.lock();
-        f(&mut context)
-    })
+    try_with_context(f).unwrap()
 }
 
 pub(crate) fn try_with_context<F, R>(f: F) -> Option<R>
 where
-    F: FnOnce(&mut TreeContext) -> R,
+    F: FnOnce(&TreeContext) -> R,
 {
-    CONTEXT
-        .try_with(|context| {
-            let mut context = context.lock();
-            f(&mut context)
-        })
-        .ok()
+    CONTEXT.try_with(|t| f(&*t)).ok()
 }
 
 /// Get the await-tree context of current task. Returns `None` if we're not instrumented.
 ///
 /// This is useful if you want to check which component or runtime task is calling this function.
-pub fn current_tree() -> Option<TreeContext> {
-    try_with_context(|c| c.clone())
+pub fn current_tree() -> Option<Tree> {
+    try_with_context(|c| c.tree().clone())
 }

@@ -132,7 +132,7 @@ async fn hello() {
     .await;
 
     // Aborted futures have been cleaned up. There should only be a single active node of root.
-    assert_eq!(with_context(|c| c.active_node_count()), 1);
+    assert_eq!(with_context(|c| c.tree().active_node_count()), 1);
 }
 
 #[tokio::test]

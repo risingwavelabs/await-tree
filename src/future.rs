@@ -60,7 +60,7 @@ impl<F: Future, const VERBOSE: bool> Future for Instrumented<F, VERBOSE> {
 
         // For assertion.
         let old_current = if cfg!(debug_assertions) {
-            try_with_context(|c| c.current())
+            try_with_context(|c| c.tree().current())
         } else {
             None
         };
@@ -76,7 +76,7 @@ impl<F: Future, const VERBOSE: bool> Future for Instrumented<F, VERBOSE> {
                     // First polled
                     Some((current_context, true)) => {
                         // First polled, push a new span to the context.
-                        let node = with_context(|c| c.push(std::mem::take(span)));
+                        let node = with_context(|c| c.tree().push(std::mem::take(span)));
                         *this.state = State::Polled {
                             this_node: node,
                             this_context: current_context,
@@ -95,7 +95,7 @@ impl<F: Future, const VERBOSE: bool> Future for Instrumented<F, VERBOSE> {
                     // Context correct
                     Some(current_context) if current_context == *this_context => {
                         // Polled before, just step in.
-                        with_context(|c| c.step_in(*this_node));
+                        with_context(|c| c.tree().step_in(*this_node));
                         *this_node
                     }
                     // Context changed
@@ -119,24 +119,24 @@ impl<F: Future, const VERBOSE: bool> Future for Instrumented<F, VERBOSE> {
         };
 
         // The current node must be the this_node.
-        debug_assert_eq!(this_node, with_context(|c| c.current()));
+        debug_assert_eq!(this_node, with_context(|c| c.tree().current()));
 
         let r = match this.inner.poll(cx) {
             // The future is ready, clean-up this span by popping from the context.
             Poll::Ready(output) => {
-                with_context(|c| c.pop());
+                with_context(|c| c.tree().pop());
                 *this.state = State::Ready;
                 Poll::Ready(output)
             }
             // Still pending, just step out.
             Poll::Pending => {
-                with_context(|c| c.step_out());
+                with_context(|c| c.tree().step_out());
                 Poll::Pending
             }
         };
 
         // The current node must be the same as we started with.
-        debug_assert_eq!(old_current.unwrap(), with_context(|c| c.current()));
+        debug_assert_eq!(old_current.unwrap(), with_context(|c| c.tree().current()));
 
         r
     }
@@ -155,7 +155,7 @@ impl<F: Future, const VERBOSE: bool> PinnedDrop for Instrumented<F, VERBOSE> {
             } => match current_context() {
                 // Context correct
                 Some(current_context) if current_context == *this_context => {
-                    with_context(|c| c.remove_and_detach(*this_node));
+                    with_context(|c| c.tree().remove_and_detach(*this_node));
                 }
                 // Context changed
                 Some(_) => {
