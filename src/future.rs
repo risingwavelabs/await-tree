@@ -19,14 +19,14 @@ use std::task::Poll;
 use indextree::NodeId;
 use pin_project::{pin_project, pinned_drop};
 
-use crate::context::{try_with_context, with_context, ContextId};
+use crate::context::{context, ContextId};
 use crate::Span;
 
 enum State {
     Initial(Span),
     Polled {
         this_node: NodeId,
-        this_context: ContextId,
+        this_context_id: ContextId,
     },
     Ready,
     /// This span is disabled due to `verbose` configuration.
@@ -57,31 +57,25 @@ impl<F: Future, const VERBOSE: bool> Future for Instrumented<F, VERBOSE> {
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
+        let context = context();
 
-        // For assertion.
-        let old_current = if cfg!(debug_assertions) {
-            try_with_context(|c| c.tree().current())
-        } else {
-            None
-        };
-
-        let this_node = match this.state {
+        let (context, this_node) = match this.state {
             State::Initial(span) => {
-                match try_with_context(|c| (c.id(), c.verbose() >= VERBOSE)) {
-                    // The tracing for this span is disabled according to the verbose configuration.
-                    Some((_, false)) => {
-                        *this.state = State::Disabled;
-                        return this.inner.poll(cx);
-                    }
-                    // First polled
-                    Some((current_context, true)) => {
+                match context {
+                    Some(c) => {
+                        if !c.verbose() && VERBOSE {
+                            // The tracing for this span is disabled according to the verbose
+                            // configuration.
+                            *this.state = State::Disabled;
+                            return this.inner.poll(cx);
+                        }
                         // First polled, push a new span to the context.
-                        let node = with_context(|c| c.tree().push(std::mem::take(span)));
+                        let node = c.tree().push(std::mem::take(span));
                         *this.state = State::Polled {
                             this_node: node,
-                            this_context: current_context,
+                            this_context_id: c.id(),
                         };
-                        node
+                        (c, node)
                     }
                     // Not in a context
                     None => return this.inner.poll(cx),
@@ -89,14 +83,14 @@ impl<F: Future, const VERBOSE: bool> Future for Instrumented<F, VERBOSE> {
             }
             State::Polled {
                 this_node,
-                this_context,
+                this_context_id: this_context,
             } => {
-                match try_with_context(|c| c.id()) {
+                match context {
                     // Context correct
-                    Some(current_context) if current_context == *this_context => {
+                    Some(c) if c.id() == *this_context => {
                         // Polled before, just step in.
-                        with_context(|c| c.tree().step_in(*this_node));
-                        *this_node
+                        c.tree().step_in(*this_node);
+                        (c, *this_node)
                     }
                     // Context changed
                     Some(_) => {
@@ -119,26 +113,21 @@ impl<F: Future, const VERBOSE: bool> Future for Instrumented<F, VERBOSE> {
         };
 
         // The current node must be the this_node.
-        debug_assert_eq!(this_node, with_context(|c| c.tree().current()));
+        debug_assert_eq!(this_node, context.tree().current());
 
-        let r = match this.inner.poll(cx) {
+        match this.inner.poll(cx) {
             // The future is ready, clean-up this span by popping from the context.
             Poll::Ready(output) => {
-                with_context(|c| c.tree().pop());
+                context.tree().pop();
                 *this.state = State::Ready;
                 Poll::Ready(output)
             }
             // Still pending, just step out.
             Poll::Pending => {
-                with_context(|c| c.tree().step_out());
+                context.tree().step_out();
                 Poll::Pending
             }
-        };
-
-        // The current node must be the same as we started with.
-        debug_assert_eq!(old_current.unwrap(), with_context(|c| c.tree().current()));
-
-        r
+        }
     }
 }
 
@@ -146,16 +135,15 @@ impl<F: Future, const VERBOSE: bool> Future for Instrumented<F, VERBOSE> {
 impl<F: Future, const VERBOSE: bool> PinnedDrop for Instrumented<F, VERBOSE> {
     fn drop(self: Pin<&mut Self>) {
         let this = self.project();
-        let current_context = || try_with_context(|c| c.id());
 
         match this.state {
             State::Polled {
                 this_node,
-                this_context,
-            } => match current_context() {
+                this_context_id,
+            } => match context() {
                 // Context correct
-                Some(current_context) if current_context == *this_context => {
-                    with_context(|c| c.tree().remove_and_detach(*this_node));
+                Some(c) if c.id() == *this_context_id => {
+                    c.tree().remove_and_detach(*this_node);
                 }
                 // Context changed
                 Some(_) => {

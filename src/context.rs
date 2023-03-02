@@ -142,7 +142,7 @@ impl Tree {
     /// Returns the new current span.
     pub(crate) fn push(&mut self, span: Span) -> NodeId {
         let child = self.arena.new_node(SpanNode::new(span));
-        self.current.append(child, &mut self.arena);
+        self.current.prepend(child, &mut self.arena);
         self.current = child;
         child
     }
@@ -154,8 +154,9 @@ impl Tree {
     /// span.
     pub(crate) fn step_in(&mut self, child: NodeId) {
         if !self.current.children(&self.arena).contains(&child) {
-            // Actually we can always call this even if `child` is already a child of `current`.
-            self.current.append(child, &mut self.arena);
+            // Actually we can always call this even if `child` is already a child of `current`. But
+            // checking first performs better.
+            self.current.prepend(child, &mut self.arena);
         }
         self.current = child;
     }
@@ -253,23 +254,13 @@ tokio::task_local! {
     pub(crate) static CONTEXT: Arc<TreeContext>
 }
 
-pub(crate) fn with_context<F, R>(f: F) -> R
-where
-    F: FnOnce(&TreeContext) -> R,
-{
-    try_with_context(f).unwrap()
-}
-
-pub(crate) fn try_with_context<F, R>(f: F) -> Option<R>
-where
-    F: FnOnce(&TreeContext) -> R,
-{
-    CONTEXT.try_with(|t| f(&*t)).ok()
+pub(crate) fn context() -> Option<Arc<TreeContext>> {
+    CONTEXT.try_with(Arc::clone).ok()
 }
 
 /// Get the await-tree context of current task. Returns `None` if we're not instrumented.
 ///
 /// This is useful if you want to check which component or runtime task is calling this function.
 pub fn current_tree() -> Option<Tree> {
-    try_with_context(|c| c.tree().clone())
+    context().map(|c| c.tree().clone())
 }
