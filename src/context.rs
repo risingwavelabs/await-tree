@@ -216,7 +216,7 @@ impl TreeContext {
     /// Create a new context.
     pub(crate) fn new(root_span: Span, verbose: bool) -> Self {
         static ID: AtomicU64 = AtomicU64::new(0);
-        let id = ID.fetch_add(1, Ordering::SeqCst);
+        let id = ID.fetch_add(1, Ordering::Relaxed);
 
         let mut arena = Arena::new();
         let root = arena.new_node(SpanNode::new(root_span));
