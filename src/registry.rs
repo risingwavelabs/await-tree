@@ -19,9 +19,8 @@ use std::hash::Hash;
 use std::sync::{Arc, Weak};
 
 use derive_builder::Builder;
-use parking_lot::Mutex;
 
-use crate::context::{TreeContext, CONTEXT};
+use crate::context::{Tree, TreeContext, CONTEXT};
 use crate::Span;
 
 /// Configuration for an await-tree registry, which affects the behavior of all await-trees in the
@@ -42,7 +41,7 @@ impl Default for Config {
 
 /// The root of an await-tree.
 pub struct TreeRoot {
-    context: Arc<Mutex<TreeContext>>,
+    context: Arc<TreeContext>,
 }
 
 impl TreeRoot {
@@ -55,7 +54,7 @@ impl TreeRoot {
 /// The registry of multiple await-trees.
 #[derive(Debug)]
 pub struct Registry<K> {
-    contexts: HashMap<K, Weak<Mutex<TreeContext>>>,
+    contexts: HashMap<K, Weak<TreeContext>>,
     config: Config,
 }
 
@@ -81,10 +80,7 @@ where
         // TODO: make this more efficient
         self.contexts.retain(|_, v| v.upgrade().is_some());
 
-        let context = Arc::new(Mutex::new(TreeContext::new(
-            root_span.into(),
-            self.config.verbose,
-        )));
+        let context = Arc::new(TreeContext::new(root_span.into(), self.config.verbose));
         let weak = Arc::downgrade(&context);
         self.contexts.insert(key, weak);
 
@@ -92,16 +88,16 @@ where
     }
 
     /// Iterate over the clones of all registered await-trees.
-    pub fn iter(&self) -> impl Iterator<Item = (&K, TreeContext)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&K, Tree)> {
         self.contexts
             .iter()
-            .filter_map(|(k, v)| v.upgrade().map(|v| (k, v.lock().clone())))
+            .filter_map(|(k, v)| v.upgrade().map(|v| (k, v.tree().clone())))
     }
 
     /// Get a clone of the await-tree with given key.
     ///
     /// Returns `None` if the key does not exist or the tree root has been dropped.
-    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<TreeContext>
+    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<Tree>
     where
         K: Borrow<Q>,
         Q: Hash + Eq,
@@ -109,7 +105,7 @@ where
         self.contexts
             .get(k)
             .and_then(|v| v.upgrade())
-            .map(|v| v.lock().clone())
+            .map(|v| v.tree().clone())
     }
 
     /// Remove all the registered await-trees.

@@ -45,6 +45,27 @@ async fn test() {
     }
 }
 
+async fn test_baseline() {
+    async fn test_inner() {
+        futures::future::join(
+            async {
+                yield_now().await;
+                black_box(1)
+            },
+            async {
+                yield_now().await;
+                yield_now().await;
+                black_box(2)
+            },
+        )
+        .await;
+    }
+
+    for _ in 0..10000 {
+        test_inner().await;
+    }
+}
+
 // time:   [6.5488 ms 6.5541 ms 6.5597 ms]
 // change: [+6.5978% +6.7838% +6.9299%] (p = 0.00 < 0.05)
 // Performance has regressed.
@@ -60,5 +81,18 @@ fn bench_basic(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_basic);
+fn bench_basic_baseline(c: &mut Criterion) {
+    c.bench_function("basic_baseline", |b| {
+        b.to_async(runtime()).iter(|| async {
+            let config = ConfigBuilder::default().verbose(false).build().unwrap();
+            let mut mgr = Registry::new(config);
+
+            let root = mgr.register(233, "root");
+            black_box(root);
+            test_baseline().await
+        })
+    });
+}
+
+criterion_group!(benches, bench_basic, bench_basic_baseline);
 criterion_main!(benches);
