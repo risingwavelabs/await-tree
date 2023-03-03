@@ -46,6 +46,7 @@ impl SpanNode {
 /// against the current task-local context before trying to update the tree.
 pub(crate) type ContextId = u64;
 
+/// An await-tree for a task.
 #[derive(Debug, Clone)]
 pub struct Tree {
     /// The arena for allocating span nodes in this context.
@@ -207,7 +208,7 @@ pub struct TreeContext {
     /// Whether to include the "verbose" span in the tree.
     verbose: bool,
 
-    ///
+    /// The await-tree.
     tree: Mutex<Tree>,
 }
 
@@ -232,6 +233,7 @@ impl TreeContext {
         }
     }
 
+    /// Returns the locked guard of the tree.
     pub(crate) fn tree(&self) -> MutexGuard<'_, Tree> {
         self.tree.lock()
     }
@@ -258,7 +260,7 @@ pub(crate) fn context() -> Option<Arc<TreeContext>> {
     CONTEXT.try_with(Arc::clone).ok()
 }
 
-/// Get the await-tree context of current task. Returns `None` if we're not instrumented.
+/// Get the await-tree of current task. Returns `None` if we're not instrumented.
 ///
 /// This is useful if you want to check which component or runtime task is calling this function.
 pub fn current_tree() -> Option<Tree> {
