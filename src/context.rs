@@ -13,9 +13,11 @@
 // limitations under the License.
 
 use std::fmt::{Debug, Write};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time;
 
+use colored::Colorize;
 use indextree::{Arena, NodeId};
 use itertools::Itertools;
 use parking_lot::{Mutex, MutexGuard};
@@ -57,50 +59,17 @@ pub struct Tree {
 
     /// The current span node. This is the node that is currently being polled.
     current: NodeId,
+
+    /// Whether to coloring the terminal
+    colored: bool,
+
+    /// if the time of execution is beyond it, warn it
+    warn_threshold: time::Duration,
 }
 
 impl std::fmt::Display for Tree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fn fmt_node(
-            f: &mut std::fmt::Formatter<'_>,
-            arena: &Arena<SpanNode>,
-            node: NodeId,
-            depth: usize,
-            current: NodeId,
-        ) -> std::fmt::Result {
-            f.write_str(&" ".repeat(depth * 2))?;
-
-            let inner = arena[node].get();
-            f.write_str(inner.span.as_str())?;
-
-            let elapsed: std::time::Duration = inner.start_time.elapsed().into();
-            write!(
-                f,
-                " [{}{:.3?}]",
-                if depth > 0 && elapsed.as_secs() >= 10 {
-                    "!!! "
-                } else {
-                    ""
-                },
-                elapsed
-            )?;
-
-            if depth > 0 && node == current {
-                f.write_str("  <== current")?;
-            }
-
-            f.write_char('\n')?;
-            for child in node
-                .children(arena)
-                .sorted_by_key(|&id| arena[id].get().start_time)
-            {
-                fmt_node(f, arena, child, depth + 1, current)?;
-            }
-
-            Ok(())
-        }
-
-        fmt_node(f, &self.arena, self.root, 0, self.current)?;
+        self.fmt_node(f, &self.arena, self.root, 0)?;
 
         // Format all detached spans.
         for node in self.arena.iter().filter(|n| !n.is_removed()) {
@@ -110,7 +79,7 @@ impl std::fmt::Display for Tree {
             }
             if node.parent().is_none() {
                 writeln!(f, "[Detached {id}]")?;
-                fmt_node(f, &self.arena, id, 1, self.current)?;
+                self.fmt_node(f, &self.arena, id, 1)?;
             }
         }
 
@@ -197,6 +166,54 @@ impl Tree {
     pub(crate) fn current(&self) -> NodeId {
         self.current
     }
+
+    fn fmt_node(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+        arena: &Arena<SpanNode>,
+        node: NodeId,
+        depth: usize,
+    ) -> std::fmt::Result {
+        f.write_str(&" ".repeat(depth * 2))?;
+
+        let inner = arena[node].get();
+        f.write_str(inner.span.as_str())?;
+
+        let elapsed: time::Duration = inner.start_time.elapsed().into();
+
+        let elapsed_str = {
+            if depth == 0 {
+                "".to_string()
+            } else if elapsed.lt(&self.warn_threshold) {
+                 format!(" [{:.3?}]", elapsed)
+            } else if self.colored {
+                 format!(" [{:.3?}]", elapsed).red().to_string()
+            } else {
+                 format!("!!! [{:.3?}]", elapsed)
+            }
+        };
+
+        write!(
+            f,
+            "{}",
+            elapsed_str
+        )?;
+
+        if depth > 0 && node == self.current {
+            f.write_str("  <== current")?;
+        }
+
+        f.write_char('\n')?;
+        for child in node
+            .children(arena)
+            .sorted_by_key(|&id| arena[id].get().start_time)
+        {
+            self.fmt_node(f, arena, child, depth + 1)?;
+        }
+
+        Ok(())
+    }
+
 }
 
 /// The task-local await-tree context.
@@ -214,7 +231,7 @@ pub struct TreeContext {
 
 impl TreeContext {
     /// Create a new context.
-    pub(crate) fn new(root_span: Span, verbose: bool) -> Self {
+    pub(crate) fn new(root_span: Span, verbose: bool, colored: bool, warn_threshold: time::Duration) -> Self {
         static ID: AtomicU64 = AtomicU64::new(0);
         let id = ID.fetch_add(1, Ordering::Relaxed);
 
@@ -225,6 +242,8 @@ impl TreeContext {
             id,
             verbose,
             tree: Tree {
+                colored,
+                warn_threshold,
                 arena,
                 root,
                 current: root,
