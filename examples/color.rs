@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! This example shows how a span can be detached from and remounted to the tree.
+//! This example shows how to configure warn threshold and color the warn
 
 
 use std::time::Duration;
