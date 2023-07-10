@@ -17,6 +17,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::hash::Hash;
 use std::sync::{Arc, Weak};
+use std::time;
 
 use derive_builder::Builder;
 
@@ -29,13 +30,23 @@ use crate::Span;
 #[builder(default)]
 pub struct Config {
     /// Whether to include the **verbose** span in the await-tree.
-    verbose: bool,
+    pub verbose: bool,
+
+    /// Whether to enable coloring the terminal.
+    pub colored: bool,
+
+    /// The threshold of the execution time to attach the warning sign (`!!!`) after the span name.
+    pub warn_threshold: time::Duration,
 }
 
 #[allow(clippy::derivable_impls)]
 impl Default for Config {
     fn default() -> Self {
-        Self { verbose: false }
+        Self {
+            verbose: false,
+            colored: false,
+            warn_threshold: time::Duration::from_secs(10),
+        }
     }
 }
 
@@ -80,7 +91,12 @@ where
         // TODO: make this more efficient
         self.contexts.retain(|_, v| v.upgrade().is_some());
 
-        let context = Arc::new(TreeContext::new(root_span.into(), self.config.verbose));
+        let context = Arc::new(TreeContext::new(
+            root_span.into(),
+            self.config.verbose,
+            self.config.colored,
+            self.config.warn_threshold,
+        ));
         let weak = Arc::downgrade(&context);
         self.contexts.insert(key, weak);
 
