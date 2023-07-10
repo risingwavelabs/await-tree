@@ -14,22 +14,26 @@
 
 //! This example shows how to configure warn threshold and color the warn
 
-
 use std::time::Duration;
+
 use await_tree::{Config, InstrumentAwait, Registry};
 use tokio::time::sleep;
 
-async fn short_work(){
-    sleep(Duration::from_millis(500)).instrument_await("short").await
+async fn short_work() {
+    sleep(Duration::from_millis(500))
+        .instrument_await("short")
+        .await
 }
 
-async fn long_work(){
-    sleep(Duration::from_millis(5000)).instrument_await("long").await
+async fn long_work() {
+    sleep(Duration::from_millis(5000))
+        .instrument_await("long")
+        .await
 }
 
 #[tokio::main]
 async fn main() {
-    let mut registry = Registry::new(Config{
+    let mut registry = Registry::new(Config {
         verbose: true,
         colored: true,
         warn_threshold: Duration::from_millis(1000).into(),
@@ -47,7 +51,6 @@ async fn main() {
     // work
     //   short [105.606ms]
     println!("{tree}");
-
 
     sleep(Duration::from_millis(2000)).await;
     let tree = registry.get(&()).unwrap().to_string();

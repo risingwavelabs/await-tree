@@ -13,8 +13,8 @@
 // limitations under the License.
 
 use std::fmt::{Debug, Write};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time;
 
 use colored::Colorize;
@@ -185,19 +185,15 @@ impl Tree {
             if depth == 0 {
                 "".to_string()
             } else if elapsed.lt(&self.warn_threshold) {
-                 format!(" [{:.3?}]", elapsed)
+                format!(" [{:.3?}]", elapsed)
             } else if self.colored {
-                 format!(" [{:.3?}]", elapsed).red().to_string()
+                format!(" [{:.3?}]", elapsed).red().to_string()
             } else {
-                 format!("!!! [{:.3?}]", elapsed)
+                format!("!!! [{:.3?}]", elapsed)
             }
         };
 
-        write!(
-            f,
-            "{}",
-            elapsed_str
-        )?;
+        write!(f, "{}", elapsed_str)?;
 
         if depth > 0 && node == self.current {
             f.write_str("  <== current")?;
@@ -213,7 +209,6 @@ impl Tree {
 
         Ok(())
     }
-
 }
 
 /// The task-local await-tree context.
@@ -231,7 +226,12 @@ pub struct TreeContext {
 
 impl TreeContext {
     /// Create a new context.
-    pub(crate) fn new(root_span: Span, verbose: bool, colored: bool, warn_threshold: time::Duration) -> Self {
+    pub(crate) fn new(
+        root_span: Span,
+        verbose: bool,
+        colored: bool,
+        warn_threshold: time::Duration,
+    ) -> Self {
         static ID: AtomicU64 = AtomicU64::new(0);
         let id = ID.fetch_add(1, Ordering::Relaxed);
 
