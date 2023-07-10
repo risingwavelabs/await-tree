@@ -35,7 +35,7 @@ pub struct Config {
     /// Whether to enable coloring the terminal.
     pub colored : bool,
 
-    /// if the time of execution is beyond it, warn it
+    /// The threshold of the execution time to attach the warning sign (`!!!`) after the span name.
     pub warn_threshold : time::Duration,
 }
 
