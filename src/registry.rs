@@ -32,7 +32,7 @@ pub struct Config {
     /// Whether to include the **verbose** span in the await-tree.
     pub verbose: bool,
 
-    /// Whether to coloring the terminal
+    /// Whether to enable coloring the terminal.
     pub colored : bool,
 
     /// if the time of execution is beyond it, warn it
