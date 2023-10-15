@@ -133,3 +133,25 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use crate::Registry;
+
+    #[test]
+    fn test_delay_gc() {
+        let mut reg = Registry::new(crate::Config {
+            verbose: false,
+            gc_throttle_duration: Duration::from_millis(100),
+        });
+        for i in 0..100 {
+            let _ = reg.register(i, "gc_me");
+        }
+        assert_eq!(reg.contexts.len(), 100);
+        std::thread::sleep(Duration::from_millis(100));
+        reg.register(101, "not_yet_to_gc_me");
+        assert_eq!(reg.contexts.len(), 1);
+    }
+}

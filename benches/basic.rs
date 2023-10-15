@@ -142,6 +142,10 @@ fn bench_many_exp(c: &mut Criterion) {
     });
 }
 
-criterion_group!(bench_many, bench_many_exp, bench_many_baseline);
+criterion_group!(
+    name = bench_many;
+    config = Criterion::default().sample_size(50);
+    targets = bench_many_exp, bench_many_baseline
+);
 
 criterion_main!(benches, bench_many);
