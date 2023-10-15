@@ -17,7 +17,9 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::hash::Hash;
 use std::sync::{Arc, Weak};
+use std::time::Duration;
 
+use coarsetime::Instant;
 use derive_builder::Builder;
 
 use crate::context::{Tree, TreeContext, CONTEXT};
@@ -30,12 +32,19 @@ use crate::Span;
 pub struct Config {
     /// Whether to include the **verbose** span in the await-tree.
     verbose: bool,
+    /// The minimal gap of triggering GC.
+    /// Generally GC will be triggered each time registering new futures to
+    /// the registry. (e.g. spawning new tasks to the runtime.)
+    gc_throttle_duration: Duration,
 }
 
 #[allow(clippy::derivable_impls)]
 impl Default for Config {
     fn default() -> Self {
-        Self { verbose: false }
+        Self {
+            verbose: false,
+            gc_throttle_duration: Duration::from_secs(1),
+        }
     }
 }
 
@@ -55,6 +64,7 @@ impl TreeRoot {
 #[derive(Debug)]
 pub struct Registry<K> {
     contexts: HashMap<K, Weak<TreeContext>>,
+    last_gc: Instant,
     config: Config,
 }
 
@@ -63,6 +73,7 @@ impl<K> Registry<K> {
     pub fn new(config: Config) -> Self {
         Self {
             contexts: HashMap::new(),
+            last_gc: Instant::recent(),
             config,
         }
     }
@@ -77,8 +88,7 @@ where
     /// If the key already exists, a new [`TreeRoot`] is returned and the reference to the old
     /// [`TreeRoot`] is dropped.
     pub fn register(&mut self, key: K, root_span: impl Into<Span>) -> TreeRoot {
-        // TODO: make this more efficient
-        self.contexts.retain(|_, v| v.upgrade().is_some());
+        self.maybe_gc();
 
         let context = Arc::new(TreeContext::new(root_span.into(), self.config.verbose));
         let weak = Arc::downgrade(&context);
@@ -111,5 +121,15 @@ where
     /// Remove all the registered await-trees.
     pub fn clear(&mut self) {
         self.contexts.clear();
+    }
+
+    fn maybe_gc(&mut self) {
+        Instant::update();
+        let since_last_gc = self.last_gc.elapsed_since_recent();
+        if since_last_gc > self.config.gc_throttle_duration.into() {
+            // TODO: make this more efficient
+            self.contexts.retain(|_, v| v.upgrade().is_some());
+            self.last_gc = Instant::recent();
+        }
     }
 }
