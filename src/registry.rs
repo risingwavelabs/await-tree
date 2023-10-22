@@ -13,12 +13,12 @@
 // limitations under the License.
 
 use std::borrow::Borrow;
-use std::collections::HashMap;
 use std::future::Future;
 use std::hash::Hash;
 use std::sync::{Arc, Weak};
 
 use derive_builder::Builder;
+use weak_table::WeakValueHashMap;
 
 use crate::context::{Tree, TreeContext, CONTEXT};
 use crate::Span;
@@ -54,15 +54,18 @@ impl TreeRoot {
 /// The registry of multiple await-trees.
 #[derive(Debug)]
 pub struct Registry<K> {
-    contexts: HashMap<K, Weak<TreeContext>>,
+    contexts: WeakValueHashMap<K, Weak<TreeContext>>,
     config: Config,
 }
 
-impl<K> Registry<K> {
+impl<K> Registry<K>
+where
+    K: std::hash::Hash + Eq + std::fmt::Debug,
+{
     /// Create a new registry with given `config`.
     pub fn new(config: Config) -> Self {
         Self {
-            contexts: HashMap::new(),
+            contexts: WeakValueHashMap::new(),
             config,
         }
     }
@@ -77,21 +80,15 @@ where
     /// If the key already exists, a new [`TreeRoot`] is returned and the reference to the old
     /// [`TreeRoot`] is dropped.
     pub fn register(&mut self, key: K, root_span: impl Into<Span>) -> TreeRoot {
-        // TODO: make this more efficient
-        self.contexts.retain(|_, v| v.upgrade().is_some());
-
         let context = Arc::new(TreeContext::new(root_span.into(), self.config.verbose));
-        let weak = Arc::downgrade(&context);
-        self.contexts.insert(key, weak);
+        self.contexts.insert(key, Arc::clone(&context));
 
         TreeRoot { context }
     }
 
     /// Iterate over the clones of all registered await-trees.
     pub fn iter(&self) -> impl Iterator<Item = (&K, Tree)> {
-        self.contexts
-            .iter()
-            .filter_map(|(k, v)| v.upgrade().map(|v| (k, v.tree().clone())))
+        self.contexts.iter().map(|(k, v)| (k, v.tree().clone()))
     }
 
     /// Get a clone of the await-tree with given key.
@@ -102,10 +99,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.contexts
-            .get(k)
-            .and_then(|v| v.upgrade())
-            .map(|v| v.tree().clone())
+        self.contexts.get(k).map(|v| v.tree().clone())
     }
 
     /// Remove all the registered await-trees.
