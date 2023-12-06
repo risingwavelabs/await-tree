@@ -51,6 +51,39 @@ impl TreeRoot {
     }
 }
 
+#[cfg(feature = "stream")]
+impl TreeRoot {
+    /// Instrument the given stream with the context of this tree root.
+    pub fn instrument_stream<S: futures_core::Stream>(
+        self,
+        stream: S,
+    ) -> impl futures_core::Stream<Item = S::Item> {
+        #[pin_project::pin_project]
+        struct StreamWithContext<S: futures_core::Stream> {
+            #[pin]
+            inner: S,
+            context: Arc<TreeContext>,
+        }
+
+        impl<S: futures_core::Stream> futures_core::Stream for StreamWithContext<S> {
+            type Item = S::Item;
+
+            fn poll_next(
+                self: std::pin::Pin<&mut Self>,
+                cx: &mut std::task::Context<'_>,
+            ) -> std::task::Poll<Option<Self::Item>> {
+                let this = self.project();
+                CONTEXT.sync_scope(this.context.clone(), || this.inner.poll_next(cx))
+            }
+        }
+
+        StreamWithContext {
+            inner: stream,
+            context: self.context,
+        }
+    }
+}
+
 /// The registry of multiple await-trees.
 #[derive(Debug)]
 pub struct Registry<K> {

@@ -9,6 +9,9 @@ categories = ["development-tools::debugging"]
 license = "Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+stream = ["futures-core"]
+
 [dependencies]
 coarsetime = "0.1"
 derive_builder = "0.12"
@@ -20,6 +23,7 @@ pin-project = "1"
 tokio = { version = "1", features = ["rt"] }
 tracing = "0.1"
 weak-table = "0.3.2"
+futures-core = { version = "0.3", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["async", "async_tokio"] }
