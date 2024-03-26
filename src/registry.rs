@@ -40,25 +40,45 @@ impl Default for Config {
     }
 }
 
+type Contexts<K> = RwLock<WeakValueHashMap<K, Weak<TreeContext>>>;
+
 /// The root of an await-tree.
-pub struct TreeRoot {
+pub struct TreeRoot<K> {
     context: Arc<TreeContext>,
+    registry: Weak<RegistryCore<K>>,
 }
 
-impl TreeRoot {
+impl<K> TreeRoot<K> {
     /// Instrument the given future with the context of this tree root.
     pub async fn instrument<F: Future>(self, future: F) -> F::Output {
         CONTEXT.scope(self.context, future).await
     }
 }
 
-type Contexts<K> = WeakValueHashMap<K, Weak<TreeContext>>;
+#[derive(Debug)]
+struct RegistryCore<K> {
+    contexts: Contexts<K>,
+    config: Config,
+}
 
 /// The registry of multiple await-trees.
 #[derive(Debug)]
-pub struct Registry<K> {
-    contexts: RwLock<Contexts<K>>,
-    config: Config,
+pub struct Registry<K>(Arc<RegistryCore<K>>);
+
+impl<K> Clone for Registry<K> {
+    fn clone(&self) -> Self {
+        Self(Arc::clone(&self.0))
+    }
+}
+
+impl<K> Registry<K> {
+    fn contexts(&self) -> &Contexts<K> {
+        &self.0.contexts
+    }
+
+    fn config(&self) -> &Config {
+        &self.0.config
+    }
 }
 
 impl<K> Registry<K>
@@ -67,10 +87,13 @@ where
 {
     /// Create a new registry with given `config`.
     pub fn new(config: Config) -> Self {
-        Self {
-            contexts: WeakValueHashMap::new().into(),
-            config,
-        }
+        Self(
+            RegistryCore {
+                contexts: Default::default(),
+                config,
+            }
+            .into(),
+        )
     }
 }
 
@@ -82,11 +105,14 @@ where
     ///
     /// If the key already exists, a new [`TreeRoot`] is returned and the reference to the old
     /// [`TreeRoot`] is dropped.
-    pub fn register(&self, key: K, root_span: impl Into<Span>) -> TreeRoot {
-        let context = Arc::new(TreeContext::new(root_span.into(), self.config.verbose));
-        self.contexts.write().insert(key, Arc::clone(&context));
+    pub fn register(&self, key: K, root_span: impl Into<Span>) -> TreeRoot<K> {
+        let context = Arc::new(TreeContext::new(root_span.into(), self.config().verbose));
+        self.contexts().write().insert(key, Arc::clone(&context));
 
-        TreeRoot { context }
+        TreeRoot {
+            context,
+            registry: Arc::downgrade(&self.0),
+        }
     }
 
     /// Get a clone of the await-tree with given key.
@@ -97,12 +123,12 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.contexts.read().get(k).map(|v| v.tree().clone())
+        self.contexts().read().get(k).map(|v| v.tree().clone())
     }
 
     /// Remove all the registered await-trees.
     pub fn clear(&self) {
-        self.contexts.write().clear();
+        self.contexts().write().clear();
     }
 }
 
@@ -112,7 +138,7 @@ where
 {
     /// Collect the snapshots of all await-trees in the registry.
     pub fn collect(&self) -> Vec<(K, Tree)> {
-        self.contexts
+        self.contexts()
             .read()
             .iter()
             .map(|(k, v)| (k.to_owned(), v.tree().clone()))
