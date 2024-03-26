@@ -18,6 +18,7 @@ use std::hash::Hash;
 use std::sync::{Arc, Weak};
 
 use derive_builder::Builder;
+use parking_lot::RwLock;
 use weak_table::WeakValueHashMap;
 
 use crate::context::{Tree, TreeContext, CONTEXT};
@@ -51,10 +52,12 @@ impl TreeRoot {
     }
 }
 
+type Contexts<K> = WeakValueHashMap<K, Weak<TreeContext>>;
+
 /// The registry of multiple await-trees.
 #[derive(Debug)]
 pub struct Registry<K> {
-    contexts: WeakValueHashMap<K, Weak<TreeContext>>,
+    contexts: RwLock<Contexts<K>>,
     config: Config,
 }
 
@@ -65,7 +68,7 @@ where
     /// Create a new registry with given `config`.
     pub fn new(config: Config) -> Self {
         Self {
-            contexts: WeakValueHashMap::new(),
+            contexts: WeakValueHashMap::new().into(),
             config,
         }
     }
@@ -79,16 +82,11 @@ where
     ///
     /// If the key already exists, a new [`TreeRoot`] is returned and the reference to the old
     /// [`TreeRoot`] is dropped.
-    pub fn register(&mut self, key: K, root_span: impl Into<Span>) -> TreeRoot {
+    pub fn register(&self, key: K, root_span: impl Into<Span>) -> TreeRoot {
         let context = Arc::new(TreeContext::new(root_span.into(), self.config.verbose));
-        self.contexts.insert(key, Arc::clone(&context));
+        self.contexts.write().insert(key, Arc::clone(&context));
 
         TreeRoot { context }
-    }
-
-    /// Iterate over the clones of all registered await-trees.
-    pub fn iter(&self) -> impl Iterator<Item = (&K, Tree)> {
-        self.contexts.iter().map(|(k, v)| (k, v.tree().clone()))
     }
 
     /// Get a clone of the await-tree with given key.
@@ -99,11 +97,25 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.contexts.get(k).map(|v| v.tree().clone())
+        self.contexts.read().get(k).map(|v| v.tree().clone())
     }
 
     /// Remove all the registered await-trees.
-    pub fn clear(&mut self) {
-        self.contexts.clear();
+    pub fn clear(&self) {
+        self.contexts.write().clear();
+    }
+}
+
+impl<K> Registry<K>
+where
+    K: Clone,
+{
+    /// Collect the snapshots of all await-trees in the registry.
+    pub fn collect(&self) -> Vec<(K, Tree)> {
+        self.contexts
+            .read()
+            .iter()
+            .map(|(k, v)| (k.to_owned(), v.tree().clone()))
+            .collect()
     }
 }

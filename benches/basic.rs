@@ -69,13 +69,15 @@ async fn test_baseline() {
 }
 
 async fn spawn_many(size: usize) {
-    let mut root = Registry::new(Config::default());
+    let registry = Registry::new(Config::default());
     let mut handles = vec![];
     for i in 0..size {
         let task = async {
             tokio::time::sleep(Duration::from_millis(10)).await;
         };
-        handles.push(tokio::spawn(root.register(i, "new_task").instrument(task)));
+        handles.push(tokio::spawn(
+            registry.register(i, "new_task").instrument(task),
+        ));
     }
     futures::future::try_join_all(handles)
         .await
@@ -102,9 +104,9 @@ fn bench_basic(c: &mut Criterion) {
     c.bench_function("basic", |b| {
         b.to_async(runtime()).iter(|| async {
             let config = ConfigBuilder::default().verbose(false).build().unwrap();
-            let mut mgr = Registry::new(config);
+            let registry = Registry::new(config);
 
-            let root = mgr.register(233, "root");
+            let root = registry.register(233, "root");
             root.instrument(test()).await;
         })
     });
@@ -114,9 +116,9 @@ fn bench_basic_baseline(c: &mut Criterion) {
     c.bench_function("basic_baseline", |b| {
         b.to_async(runtime()).iter(|| async {
             let config = ConfigBuilder::default().verbose(false).build().unwrap();
-            let mut mgr = Registry::new(config);
+            let registry = Registry::new(config);
 
-            let root = mgr.register(233, "root");
+            let root = registry.register(233, "root");
             black_box(root);
             test_baseline().await
         })
