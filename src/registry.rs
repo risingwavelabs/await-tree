@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::any::Any;
 use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hash;
@@ -61,12 +62,16 @@ impl<T> Key for T where T: Hash + Eq + Debug + Send + Sync + 'static {}
 trait ObjKey: DynHash + DynEq + Debug + Send + Sync + 'static {}
 impl<T> ObjKey for T where T: DynHash + DynEq + Debug + Send + Sync + 'static {}
 
-#[derive(Debug)]
-struct AnyKey(Box<dyn ObjKey>);
+#[derive(Debug, Clone)]
+pub struct AnyKey(Arc<dyn ObjKey>);
 
 impl AnyKey {
     fn new(key: impl ObjKey) -> Self {
-        Self(Box::new(key))
+        Self(Arc::new(key))
+    }
+
+    pub fn as_any(&self) -> &dyn Any {
+        self.0.as_ref().as_any()
     }
 }
 
@@ -155,7 +160,7 @@ impl Registry {
         self.contexts().write().clear();
     }
 
-    /// Collect the snapshots of all await-trees with the key of type `K` in the registry.
+    /// Collect the snapshots of all await-trees with the key of type `K`.
     pub fn collect<K: Key + Clone>(&self) -> Vec<(K, Tree)> {
         self.contexts()
             .read()
@@ -167,6 +172,15 @@ impl Registry {
                     None
                 }
             })
+            .collect()
+    }
+
+    /// Collect the snapshots of all await-trees regardless of the key type.
+    pub fn collect_all(&self) -> Vec<(AnyKey, Tree)> {
+        self.contexts()
+            .read()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.tree().clone()))
             .collect()
     }
 }
