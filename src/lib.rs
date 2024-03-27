@@ -17,6 +17,7 @@ use std::future::Future;
 mod context;
 mod future;
 mod registry;
+mod utils;
 
 pub use context::{current_tree, TreeContext};
 use flexstr::SharedStr;

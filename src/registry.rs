@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::borrow::Borrow;
+use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hash;
 use std::sync::{Arc, Weak};
@@ -22,6 +22,7 @@ use parking_lot::RwLock;
 use weak_table::WeakValueHashMap;
 
 use crate::context::{Tree, TreeContext, CONTEXT};
+use crate::utils::{DynEq, DynHash};
 use crate::Span;
 
 /// Configuration for an await-tree registry, which affects the behavior of all await-trees in the
@@ -40,39 +41,66 @@ impl Default for Config {
     }
 }
 
-type Contexts<K> = RwLock<WeakValueHashMap<K, Weak<TreeContext>>>;
-
 /// The root of an await-tree.
-pub struct TreeRoot<K> {
+pub struct TreeRoot {
     context: Arc<TreeContext>,
-    registry: Weak<RegistryCore<K>>,
+    #[allow(dead_code)]
+    registry: Weak<RegistryCore>,
 }
 
-impl<K> TreeRoot<K> {
+impl TreeRoot {
     /// Instrument the given future with the context of this tree root.
     pub async fn instrument<F: Future>(self, future: F) -> F::Output {
         CONTEXT.scope(self.context, future).await
     }
 }
 
+pub trait Key: DynHash + DynEq + Debug + Send + Sync + 'static {}
+impl<T> Key for T where T: DynHash + DynEq + Debug + Send + Sync + 'static {}
+
 #[derive(Debug)]
-struct RegistryCore<K> {
-    contexts: Contexts<K>,
+struct AnyKey(Box<dyn Key>);
+
+impl AnyKey {
+    fn new(key: impl Key) -> Self {
+        Self(Box::new(key))
+    }
+}
+
+impl PartialEq for AnyKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.dyn_eq(other.0.as_dyn_eq())
+    }
+}
+
+impl Eq for AnyKey {}
+
+impl Hash for AnyKey {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.dyn_hash(state);
+    }
+}
+
+type Contexts = RwLock<WeakValueHashMap<AnyKey, Weak<TreeContext>>>;
+
+#[derive(Debug)]
+struct RegistryCore {
+    contexts: Contexts,
     config: Config,
 }
 
 /// The registry of multiple await-trees.
 #[derive(Debug)]
-pub struct Registry<K>(Arc<RegistryCore<K>>);
+pub struct Registry(Arc<RegistryCore>);
 
-impl<K> Clone for Registry<K> {
+impl Clone for Registry {
     fn clone(&self) -> Self {
         Self(Arc::clone(&self.0))
     }
 }
 
-impl<K> Registry<K> {
-    fn contexts(&self) -> &Contexts<K> {
+impl Registry {
+    fn contexts(&self) -> &Contexts {
         &self.0.contexts
     }
 
@@ -81,10 +109,7 @@ impl<K> Registry<K> {
     }
 }
 
-impl<K> Registry<K>
-where
-    K: std::hash::Hash + Eq + std::fmt::Debug,
-{
+impl Registry {
     /// Create a new registry with given `config`.
     pub fn new(config: Config) -> Self {
         Self(
@@ -95,19 +120,16 @@ where
             .into(),
         )
     }
-}
 
-impl<K> Registry<K>
-where
-    K: std::hash::Hash + Eq + std::fmt::Debug,
-{
     /// Register with given key. Returns a [`TreeRoot`] that can be used to instrument a future.
     ///
     /// If the key already exists, a new [`TreeRoot`] is returned and the reference to the old
     /// [`TreeRoot`] is dropped.
-    pub fn register(&self, key: K, root_span: impl Into<Span>) -> TreeRoot<K> {
+    pub fn register(&self, key: impl Key, root_span: impl Into<Span>) -> TreeRoot {
         let context = Arc::new(TreeContext::new(root_span.into(), self.config().verbose));
-        self.contexts().write().insert(key, Arc::clone(&context));
+        self.contexts()
+            .write()
+            .insert(AnyKey::new(key), Arc::clone(&context));
 
         TreeRoot {
             context,
@@ -118,30 +140,30 @@ where
     /// Get a clone of the await-tree with given key.
     ///
     /// Returns `None` if the key does not exist or the tree root has been dropped.
-    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<Tree>
-    where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
-    {
-        self.contexts().read().get(k).map(|v| v.tree().clone())
+    pub fn get(&self, key: impl Key) -> Option<Tree> {
+        self.contexts()
+            .read()
+            .get(&AnyKey::new(key)) // TODO: accept ref can?
+            .map(|v| v.tree().clone())
     }
 
     /// Remove all the registered await-trees.
     pub fn clear(&self) {
         self.contexts().write().clear();
     }
-}
 
-impl<K> Registry<K>
-where
-    K: Clone,
-{
-    /// Collect the snapshots of all await-trees in the registry.
-    pub fn collect(&self) -> Vec<(K, Tree)> {
+    /// Collect the snapshots of all await-trees with the key of type `K` in the registry.
+    pub fn collect<K: Key + Clone>(&self) -> Vec<(K, Tree)> {
         self.contexts()
             .read()
             .iter()
-            .map(|(k, v)| (k.to_owned(), v.tree().clone()))
+            .filter_map(|(k, v)| {
+                if let Some(k) = k.0.as_ref().as_any().downcast_ref::<K>() {
+                    Some((k.clone(), v.tree().clone()))
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 }
