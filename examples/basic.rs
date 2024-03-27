@@ -44,11 +44,11 @@ async fn foo() {
 #[tokio::main]
 async fn main() {
     let registry = Registry::new(Config::default());
-    let root = registry.register("", "foo");
+    let root = registry.register((), "foo");
     tokio::spawn(root.instrument(foo()));
 
     sleep(Duration::from_secs(1)).await;
-    let tree = registry.get("").unwrap().to_string();
+    let tree = registry.get(()).unwrap().to_string();
 
     // foo [1.006s]
     //   bar [1.006s]

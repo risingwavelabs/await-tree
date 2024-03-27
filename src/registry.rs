@@ -23,7 +23,7 @@ use parking_lot::RwLock;
 use weak_table::WeakValueHashMap;
 
 use crate::context::{Tree, TreeContext, CONTEXT};
-use crate::utils::{DynEq, DynHash};
+use crate::obj_utils::{DynEq, DynHash};
 use crate::Span;
 
 /// Configuration for an await-tree registry, which affects the behavior of all await-trees in the
@@ -105,6 +105,8 @@ struct RegistryCore {
 }
 
 /// The registry of multiple await-trees.
+///
+/// Can be cheaply cloned to share the same registry.
 #[derive(Debug)]
 pub struct Registry(Arc<RegistryCore>);
 
