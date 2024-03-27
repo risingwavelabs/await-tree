@@ -56,24 +56,20 @@ impl TreeRoot {
     }
 }
 
+/// A key that can be used to identify a task and its await-tree in the [`Registry`].
+///
+/// All thread-safe types that can be used as a key of a hash map are automatically implemented with
+/// this trait.
 pub trait Key: Hash + Eq + Debug + Send + Sync + 'static {}
 impl<T> Key for T where T: Hash + Eq + Debug + Send + Sync + 'static {}
 
+/// The object-safe version of [`Key`], automatically implemented.
 trait ObjKey: DynHash + DynEq + Debug + Send + Sync + 'static {}
 impl<T> ObjKey for T where T: DynHash + DynEq + Debug + Send + Sync + 'static {}
 
+/// Type-erased key for the [`Registry`].
 #[derive(Debug, Clone)]
 pub struct AnyKey(Arc<dyn ObjKey>);
-
-impl AnyKey {
-    fn new(key: impl ObjKey) -> Self {
-        Self(Arc::new(key))
-    }
-
-    pub fn as_any(&self) -> &dyn Any {
-        self.0.as_ref().as_any()
-    }
-}
 
 impl PartialEq for AnyKey {
     fn eq(&self, other: &Self) -> bool {
@@ -86,6 +82,17 @@ impl Eq for AnyKey {}
 impl Hash for AnyKey {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.dyn_hash(state);
+    }
+}
+
+impl AnyKey {
+    fn new(key: impl ObjKey) -> Self {
+        Self(Arc::new(key))
+    }
+
+    /// Cast the key to `dyn Any`.
+    pub fn as_any(&self) -> &dyn Any {
+        self.0.as_ref().as_any()
     }
 }
 

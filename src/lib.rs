@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Instrument await-tree for actor-based applications.
+
+#![forbid(missing_docs)]
+
 use std::future::Future;
 
 mod context;
@@ -22,7 +26,7 @@ mod utils;
 pub use context::{current_tree, TreeContext};
 use flexstr::SharedStr;
 pub use future::Instrumented;
-pub use registry::{Config, ConfigBuilder, ConfigBuilderError, Registry, TreeRoot};
+pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry, TreeRoot};
 
 /// A cheaply cloneable span in the await-tree.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
