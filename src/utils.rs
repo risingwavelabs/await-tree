@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 
 /// An object safe version of [`Eq`]. This trait is automatically implemented
 /// for any `'static` type that implements `Eq`.
-pub trait DynEq: Any {
+pub(crate) trait DynEq: Any {
     /// Casts the type to `dyn Any`.
     fn as_any(&self) -> &dyn Any;
 
@@ -32,7 +32,7 @@ where
 
 /// An object safe version of [`Hash`]. This trait is automatically implemented
 /// for any `'static` type that implements `Hash`.
-pub trait DynHash: DynEq {
+pub(crate) trait DynHash: DynEq {
     /// Casts the type to `dyn Any`.
     fn as_dyn_eq(&self) -> &dyn DynEq;
 

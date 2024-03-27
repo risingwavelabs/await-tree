@@ -55,14 +55,17 @@ impl TreeRoot {
     }
 }
 
-pub trait Key: DynHash + DynEq + Debug + Send + Sync + 'static {}
-impl<T> Key for T where T: DynHash + DynEq + Debug + Send + Sync + 'static {}
+pub trait Key: Hash + Eq + Debug + Send + Sync + 'static {}
+impl<T> Key for T where T: Hash + Eq + Debug + Send + Sync + 'static {}
+
+trait ObjKey: DynHash + DynEq + Debug + Send + Sync + 'static {}
+impl<T> ObjKey for T where T: DynHash + DynEq + Debug + Send + Sync + 'static {}
 
 #[derive(Debug)]
-struct AnyKey(Box<dyn Key>);
+struct AnyKey(Box<dyn ObjKey>);
 
 impl AnyKey {
-    fn new(key: impl Key) -> Self {
+    fn new(key: impl ObjKey) -> Self {
         Self(Box::new(key))
     }
 }
