@@ -44,7 +44,11 @@ impl SpanNode {
 
 /// The id of an await-tree context. We will check the id recorded in the instrumented future
 /// against the current task-local context before trying to update the tree.
-pub(crate) type ContextId = u64;
+
+// Also used as the key for anonymous trees in the registry.
+// Intentionally made private to prevent users from reusing the same id when registering a new tree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct ContextId(u64);
 
 /// An await-tree for a task.
 #[derive(Debug, Clone)]
@@ -201,7 +205,7 @@ impl Tree {
 
 /// The task-local await-tree context.
 #[derive(Debug)]
-pub struct TreeContext {
+pub(crate) struct TreeContext {
     /// The id of the context.
     id: ContextId,
 
@@ -222,7 +226,7 @@ impl TreeContext {
         let root = arena.new_node(SpanNode::new(root_span));
 
         Self {
-            id,
+            id: ContextId(id),
             verbose,
             tree: Tree {
                 arena,
@@ -233,6 +237,11 @@ impl TreeContext {
         }
     }
 
+    /// Get the context id.
+    pub(crate) fn id(&self) -> ContextId {
+        self.id
+    }
+
     /// Returns the locked guard of the tree.
     pub(crate) fn tree(&self) -> MutexGuard<'_, Tree> {
         self.tree.lock()
@@ -241,14 +250,6 @@ impl TreeContext {
     /// Whether the verbose span should be included.
     pub(crate) fn verbose(&self) -> bool {
         self.verbose
-    }
-}
-
-/// Public interfaces.
-impl TreeContext {
-    /// Get the context id.
-    pub fn id(&self) -> ContextId {
-        self.id
     }
 }
 

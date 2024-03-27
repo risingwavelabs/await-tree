@@ -23,7 +23,7 @@ mod future;
 mod obj_utils;
 mod registry;
 
-pub use context::{current_tree, TreeContext};
+pub use context::current_tree;
 use flexstr::SharedStr;
 pub use future::Instrumented;
 pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry, TreeRoot};
