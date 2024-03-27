@@ -192,3 +192,32 @@ impl Registry {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_registry() {
+        let registry = Registry::new(Config::default());
+
+        let _0_i32 = registry.register(0_i32, "0");
+        let _1_i32 = registry.register(1_i32, "1");
+        let _2_i32 = registry.register(2_i32, "2");
+
+        let _0_str = registry.register("0", "0");
+        let _1_str = registry.register("1", "1");
+
+        let _unit = registry.register((), "()");
+        let _unit_replaced = registry.register((), "[]");
+
+        let i32s = registry.collect::<i32>();
+        assert_eq!(i32s.len(), 3);
+
+        let strs = registry.collect::<&'static str>();
+        assert_eq!(strs.len(), 2);
+
+        let units = registry.collect::<()>();
+        assert_eq!(units.len(), 1);
+    }
+}
