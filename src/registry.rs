@@ -173,11 +173,10 @@ impl Registry {
             .read()
             .iter()
             .filter_map(|(k, v)| {
-                if let Some(k) = k.0.as_ref().as_any().downcast_ref::<K>() {
-                    Some((k.clone(), v.tree().clone()))
-                } else {
-                    None
-                }
+                k.0.as_ref()
+                    .as_any()
+                    .downcast_ref::<K>()
+                    .map(|k| (k.clone(), v.tree().clone()))
             })
             .collect()
     }
