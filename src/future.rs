@@ -19,7 +19,8 @@ use std::task::Poll;
 use indextree::NodeId;
 use pin_project::{pin_project, pinned_drop};
 
-use crate::context::{context, ContextId};
+use crate::context::ContextId;
+use crate::root::current_context;
 use crate::Span;
 
 enum State {
@@ -57,7 +58,7 @@ impl<F: Future, const VERBOSE: bool> Future for Instrumented<F, VERBOSE> {
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
-        let context = context();
+        let context = current_context();
 
         let (context, this_node) = match this.state {
             State::Initial(span) => {
@@ -140,7 +141,7 @@ impl<F: Future, const VERBOSE: bool> PinnedDrop for Instrumented<F, VERBOSE> {
             State::Polled {
                 this_node,
                 this_context_id,
-            } => match context() {
+            } => match current_context() {
                 // Context correct
                 Some(c) if c.id() == *this_context_id => {
                     c.tree().remove_and_detach(*this_node);

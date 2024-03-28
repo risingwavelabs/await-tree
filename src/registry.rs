@@ -14,7 +14,6 @@
 
 use std::any::Any;
 use std::fmt::Debug;
-use std::future::Future;
 use std::hash::Hash;
 use std::sync::{Arc, Weak};
 
@@ -22,9 +21,9 @@ use derive_builder::Builder;
 use parking_lot::RwLock;
 use weak_table::WeakValueHashMap;
 
-use crate::context::{ContextId, Tree, TreeContext, CONTEXT};
+use crate::context::{ContextId, Tree, TreeContext};
 use crate::obj_utils::{DynEq, DynHash};
-use crate::Span;
+use crate::{Span, TreeRoot};
 
 /// Configuration for an await-tree registry, which affects the behavior of all await-trees in the
 /// registry.
@@ -39,20 +38,6 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self { verbose: false }
-    }
-}
-
-/// The root of an await-tree.
-pub struct TreeRoot {
-    context: Arc<TreeContext>,
-    #[allow(dead_code)]
-    registry: Weak<RegistryCore>,
-}
-
-impl TreeRoot {
-    /// Instrument the given future with the context of this tree root.
-    pub async fn instrument<F: Future>(self, future: F) -> F::Output {
-        CONTEXT.scope(self.context, future).await
     }
 }
 
@@ -103,7 +88,6 @@ impl AnyKey {
 
 type Contexts = RwLock<WeakValueHashMap<AnyKey, Weak<TreeContext>>>;
 
-#[derive(Debug)]
 struct RegistryCore {
     contexts: Contexts,
     config: Config,
@@ -112,8 +96,15 @@ struct RegistryCore {
 /// The registry of multiple await-trees.
 ///
 /// Can be cheaply cloned to share the same registry.
-#[derive(Debug)]
 pub struct Registry(Arc<RegistryCore>);
+
+impl Debug for Registry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Registry")
+            .field("config", self.config())
+            .finish_non_exhaustive()
+    }
+}
 
 impl Clone for Registry {
     fn clone(&self) -> Self {
@@ -150,7 +141,7 @@ impl Registry {
 
         TreeRoot {
             context,
-            registry: Arc::downgrade(&self.0),
+            registry: WeakRegistry(Arc::downgrade(&self.0)),
         }
     }
 
@@ -224,6 +215,14 @@ impl Registry {
             .iter()
             .map(|(k, v)| (k.clone(), v.tree().clone()))
             .collect()
+    }
+}
+
+pub(crate) struct WeakRegistry(Weak<RegistryCore>);
+
+impl WeakRegistry {
+    pub fn upgrade(&self) -> Option<Registry> {
+        self.0.upgrade().map(Registry)
     }
 }
 

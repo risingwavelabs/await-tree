@@ -14,12 +14,12 @@
 
 use std::fmt::{Debug, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
 
 use indextree::{Arena, NodeId};
 use itertools::Itertools;
 use parking_lot::{Mutex, MutexGuard};
 
+use crate::root::current_context;
 use crate::Span;
 
 /// Node in the span tree.
@@ -42,11 +42,13 @@ impl SpanNode {
     }
 }
 
-/// The id of an await-tree context. We will check the id recorded in the instrumented future
-/// against the current task-local context before trying to update the tree.
-
-// Also used as the key for anonymous trees in the registry.
-// Intentionally made private to prevent users from reusing the same id when registering a new tree.
+/// The id of an await-tree context.
+///
+/// We will check the id recorded in the instrumented future against the current task-local context
+/// before trying to update the tree.
+///
+/// Also used as the key for anonymous trees in the registry. Intentionally made private to prevent
+/// users from reusing the same id when registering a new tree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct ContextId(u64);
 
@@ -253,17 +255,9 @@ impl TreeContext {
     }
 }
 
-tokio::task_local! {
-    pub(crate) static CONTEXT: Arc<TreeContext>
-}
-
-pub(crate) fn context() -> Option<Arc<TreeContext>> {
-    CONTEXT.try_with(Arc::clone).ok()
-}
-
 /// Get the await-tree of current task. Returns `None` if we're not instrumented.
 ///
 /// This is useful if you want to check which component or runtime task is calling this function.
 pub fn current_tree() -> Option<Tree> {
-    context().map(|c| c.tree().clone())
+    current_context().map(|c| c.tree().clone())
 }
