@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::borrow::Borrow;
+use std::any::Any;
+use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hash;
 use std::sync::{Arc, Weak};
 
 use derive_builder::Builder;
+use parking_lot::RwLock;
 use weak_table::WeakValueHashMap;
 
 use crate::context::{Tree, TreeContext, CONTEXT};
+use crate::obj_utils::{DynEq, DynHash};
 use crate::Span;
 
 /// Configuration for an await-tree registry, which affects the behavior of all await-trees in the
@@ -42,6 +45,8 @@ impl Default for Config {
 /// The root of an await-tree.
 pub struct TreeRoot {
     context: Arc<TreeContext>,
+    #[allow(dead_code)]
+    registry: Weak<RegistryCore>,
 }
 
 impl TreeRoot {
@@ -51,59 +56,168 @@ impl TreeRoot {
     }
 }
 
-/// The registry of multiple await-trees.
-#[derive(Debug)]
-pub struct Registry<K> {
-    contexts: WeakValueHashMap<K, Weak<TreeContext>>,
-    config: Config,
-}
+/// A key that can be used to identify a task and its await-tree in the [`Registry`].
+///
+/// All thread-safe types that can be used as a key of a hash map are automatically implemented with
+/// this trait.
+pub trait Key: Hash + Eq + Debug + Send + Sync + 'static {}
+impl<T> Key for T where T: Hash + Eq + Debug + Send + Sync + 'static {}
 
-impl<K> Registry<K>
-where
-    K: std::hash::Hash + Eq + std::fmt::Debug,
-{
-    /// Create a new registry with given `config`.
-    pub fn new(config: Config) -> Self {
-        Self {
-            contexts: WeakValueHashMap::new(),
-            config,
-        }
+/// The object-safe version of [`Key`], automatically implemented.
+trait ObjKey: DynHash + DynEq + Debug + Send + Sync + 'static {}
+impl<T> ObjKey for T where T: DynHash + DynEq + Debug + Send + Sync + 'static {}
+
+/// Type-erased key for the [`Registry`].
+#[derive(Debug, Clone)]
+pub struct AnyKey(Arc<dyn ObjKey>);
+
+impl PartialEq for AnyKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.dyn_eq(other.0.as_dyn_eq())
     }
 }
 
-impl<K> Registry<K>
-where
-    K: std::hash::Hash + Eq + std::fmt::Debug,
-{
+impl Eq for AnyKey {}
+
+impl Hash for AnyKey {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.dyn_hash(state);
+    }
+}
+
+impl AnyKey {
+    fn new(key: impl ObjKey) -> Self {
+        Self(Arc::new(key))
+    }
+
+    /// Cast the key to `dyn Any`.
+    pub fn as_any(&self) -> &dyn Any {
+        self.0.as_ref().as_any()
+    }
+}
+
+type Contexts = RwLock<WeakValueHashMap<AnyKey, Weak<TreeContext>>>;
+
+#[derive(Debug)]
+struct RegistryCore {
+    contexts: Contexts,
+    config: Config,
+}
+
+/// The registry of multiple await-trees.
+///
+/// Can be cheaply cloned to share the same registry.
+#[derive(Debug)]
+pub struct Registry(Arc<RegistryCore>);
+
+impl Clone for Registry {
+    fn clone(&self) -> Self {
+        Self(Arc::clone(&self.0))
+    }
+}
+
+impl Registry {
+    fn contexts(&self) -> &Contexts {
+        &self.0.contexts
+    }
+
+    fn config(&self) -> &Config {
+        &self.0.config
+    }
+}
+
+impl Registry {
+    /// Create a new registry with given `config`.
+    pub fn new(config: Config) -> Self {
+        Self(
+            RegistryCore {
+                contexts: Default::default(),
+                config,
+            }
+            .into(),
+        )
+    }
+
     /// Register with given key. Returns a [`TreeRoot`] that can be used to instrument a future.
     ///
     /// If the key already exists, a new [`TreeRoot`] is returned and the reference to the old
     /// [`TreeRoot`] is dropped.
-    pub fn register(&mut self, key: K, root_span: impl Into<Span>) -> TreeRoot {
-        let context = Arc::new(TreeContext::new(root_span.into(), self.config.verbose));
-        self.contexts.insert(key, Arc::clone(&context));
+    pub fn register(&self, key: impl Key, root_span: impl Into<Span>) -> TreeRoot {
+        let context = Arc::new(TreeContext::new(root_span.into(), self.config().verbose));
+        self.contexts()
+            .write()
+            .insert(AnyKey::new(key), Arc::clone(&context));
 
-        TreeRoot { context }
-    }
-
-    /// Iterate over the clones of all registered await-trees.
-    pub fn iter(&self) -> impl Iterator<Item = (&K, Tree)> {
-        self.contexts.iter().map(|(k, v)| (k, v.tree().clone()))
+        TreeRoot {
+            context,
+            registry: Arc::downgrade(&self.0),
+        }
     }
 
     /// Get a clone of the await-tree with given key.
     ///
     /// Returns `None` if the key does not exist or the tree root has been dropped.
-    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<Tree>
-    where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
-    {
-        self.contexts.get(k).map(|v| v.tree().clone())
+    pub fn get(&self, key: impl Key) -> Option<Tree> {
+        self.contexts()
+            .read()
+            .get(&AnyKey::new(key)) // TODO: accept ref can?
+            .map(|v| v.tree().clone())
     }
 
     /// Remove all the registered await-trees.
-    pub fn clear(&mut self) {
-        self.contexts.clear();
+    pub fn clear(&self) {
+        self.contexts().write().clear();
+    }
+
+    /// Collect the snapshots of all await-trees with the key of type `K`.
+    pub fn collect<K: Key + Clone>(&self) -> Vec<(K, Tree)> {
+        self.contexts()
+            .read()
+            .iter()
+            .filter_map(|(k, v)| {
+                k.0.as_ref()
+                    .as_any()
+                    .downcast_ref::<K>()
+                    .map(|k| (k.clone(), v.tree().clone()))
+            })
+            .collect()
+    }
+
+    /// Collect the snapshots of all await-trees regardless of the key type.
+    pub fn collect_all(&self) -> Vec<(AnyKey, Tree)> {
+        self.contexts()
+            .read()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.tree().clone()))
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_registry() {
+        let registry = Registry::new(Config::default());
+
+        let _0_i32 = registry.register(0_i32, "0");
+        let _1_i32 = registry.register(1_i32, "1");
+        let _2_i32 = registry.register(2_i32, "2");
+
+        let _0_str = registry.register("0", "0");
+        let _1_str = registry.register("1", "1");
+
+        let _unit = registry.register((), "()");
+        let _unit_replaced = registry.register((), "[]");
+
+        let i32s = registry.collect::<i32>();
+        assert_eq!(i32s.len(), 3);
+
+        let strs = registry.collect::<&'static str>();
+        assert_eq!(strs.len(), 2);
+
+        let units = registry.collect::<()>();
+        assert_eq!(units.len(), 1);
     }
 }

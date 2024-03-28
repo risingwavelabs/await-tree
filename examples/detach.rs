@@ -47,7 +47,7 @@ async fn work(rx: Receiver<()>) {
 
 #[tokio::main]
 async fn main() {
-    let mut registry = Registry::new(Config::default());
+    let registry = Registry::new(Config::default());
     let root = registry.register((), "work");
     let (tx, rx) = oneshot::channel();
     tokio::spawn(root.instrument(work(rx)));

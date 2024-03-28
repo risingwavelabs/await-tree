@@ -31,8 +31,8 @@ async fn foo() {
 
 #[tokio::main]
 async fn main() {
-    let mut registry = Registry::new(Config::default());
-    for i in 0..3 {
+    let registry = Registry::new(Config::default());
+    for i in 0_i32..3 {
         let root = registry.register(i, format!("actor {i}"));
         tokio::spawn(root.instrument(work(i)));
     }
@@ -50,7 +50,11 @@ async fn main() {
     // actor 2 [1.007s]
     //   actor work 2 [1.007s]
     //     pending [1.007s]
-    for (_, tree) in registry.iter().sorted_by_key(|(i, _)| *i) {
+    for (_, tree) in registry
+        .collect::<i32>()
+        .into_iter()
+        .sorted_by_key(|(i, _)| *i)
+    {
         println!("{tree}");
     }
 }

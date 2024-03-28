@@ -27,7 +27,7 @@ async fn foo() {
 
 async fn work(verbose: bool) -> String {
     let config = ConfigBuilder::default().verbose(verbose).build().unwrap();
-    let mut registry = Registry::new(config);
+    let registry = Registry::new(config);
     let root = registry.register((), "foo");
     tokio::spawn(root.instrument(foo()));
 

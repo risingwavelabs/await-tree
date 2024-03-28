@@ -137,8 +137,8 @@ async fn hello() {
 
 #[tokio::test]
 async fn test_await_tree() {
-    let mut registry = Registry::new(Config::default());
-    let root = registry.register(233, "actor 233");
+    let registry = Registry::new(Config::default());
+    let root = registry.register((), "actor 233");
 
     let fut = root.instrument(hello());
     pin_mut!(fut);
@@ -175,7 +175,13 @@ async fn test_await_tree() {
     let mut actual_counts = vec![];
 
     poll_fn(|cx| {
-        let tree = registry.iter().exactly_one().ok().unwrap().1;
+        let tree = registry
+            .collect::<()>()
+            .into_iter()
+            .exactly_one()
+            .ok()
+            .unwrap()
+            .1;
         println!("{tree}");
         actual_counts.push((tree.active_node_count(), tree.detached_node_count()));
         fut.poll_unpin(cx)
