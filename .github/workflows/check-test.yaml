@@ -27,7 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: cargo-bins/cargo-binstall@main
       - name: Install cargo-semver-checks
-        run: cargo install cargo-semver-checks
+        run: cargo binstall -y cargo-semver-checks
       - name: Check
         run: cargo semver-checks check-release -p await-tree
