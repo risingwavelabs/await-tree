@@ -22,11 +22,15 @@ mod context;
 mod future;
 mod obj_utils;
 mod registry;
+mod root;
+mod spawn;
 
 pub use context::current_tree;
 use flexstr::SharedStr;
 pub use future::Instrumented;
-pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry, TreeRoot};
+pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry};
+pub use root::TreeRoot;
+pub use spawn::{spawn, spawn_anonymous};
 
 /// A cheaply cloneable span in the await-tree.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]

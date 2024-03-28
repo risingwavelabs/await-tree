@@ -16,7 +16,7 @@ use futures::future::{join_all, poll_fn, select_all};
 use futures::{pin_mut, FutureExt, Stream, StreamExt};
 use itertools::Itertools;
 
-use crate::context::context;
+use crate::root::current_context;
 use crate::{Config, InstrumentAwait, Registry};
 
 async fn sleep(time: u64) {
@@ -132,7 +132,7 @@ async fn hello() {
     .await;
 
     // Aborted futures have been cleaned up. There should only be a single active node of root.
-    assert_eq!(context().unwrap().tree().active_node_count(), 1);
+    assert_eq!(current_context().unwrap().tree().active_node_count(), 1);
 }
 
 #[tokio::test]
