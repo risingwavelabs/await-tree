@@ -2,25 +2,32 @@ name: Check and Test
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  cargo-check-test:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Format
-      run: cargo fmt --check
-    - name: Build
-      run: cargo build --all-targets --all-features
-    - name: Clippy
-      run: cargo clippy --all-targets --all-features
-    - name: Run tests
-      run: cargo test
+      - uses: actions/checkout@v3
+      - name: Format
+        run: cargo fmt --check
+      - name: Build
+        run: cargo build --all-targets --all-features
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features
+      - name: Run tests
+        run: cargo test
+
+  semver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install cargo-semver-checks
+        run: cargo install cargo-semver-checks
+      - name: Check
+        run: cargo semver-checks check-release -p await-tree
