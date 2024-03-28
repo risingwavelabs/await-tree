@@ -22,7 +22,7 @@ use derive_builder::Builder;
 use parking_lot::RwLock;
 use weak_table::WeakValueHashMap;
 
-use crate::context::{Tree, TreeContext, CONTEXT};
+use crate::context::{ContextId, Tree, TreeContext, CONTEXT};
 use crate::obj_utils::{DynEq, DynHash};
 use crate::Span;
 
@@ -94,6 +94,11 @@ impl AnyKey {
     pub fn as_any(&self) -> &dyn Any {
         self.0.as_ref().as_any()
     }
+
+    /// Returns whether this key corresponds to an anonymous await-tree.
+    pub fn is_anonymous(&self) -> bool {
+        self.as_any().is::<ContextId>()
+    }
 }
 
 type Contexts = RwLock<WeakValueHashMap<AnyKey, Weak<TreeContext>>>;
@@ -138,12 +143,7 @@ impl Registry {
         )
     }
 
-    /// Register with given key. Returns a [`TreeRoot`] that can be used to instrument a future.
-    ///
-    /// If the key already exists, a new [`TreeRoot`] is returned and the reference to the old
-    /// [`TreeRoot`] is dropped.
-    pub fn register(&self, key: impl Key, root_span: impl Into<Span>) -> TreeRoot {
-        let context = Arc::new(TreeContext::new(root_span.into(), self.config().verbose));
+    fn register_inner(&self, key: impl Key, context: Arc<TreeContext>) -> TreeRoot {
         self.contexts()
             .write()
             .insert(AnyKey::new(key), Arc::clone(&context));
@@ -152,6 +152,25 @@ impl Registry {
             context,
             registry: Arc::downgrade(&self.0),
         }
+    }
+
+    /// Register with given key. Returns a [`TreeRoot`] that can be used to instrument a future.
+    ///
+    /// If the key already exists, a new [`TreeRoot`] is returned and the reference to the old
+    /// [`TreeRoot`] is dropped.
+    pub fn register(&self, key: impl Key, root_span: impl Into<Span>) -> TreeRoot {
+        let context = Arc::new(TreeContext::new(root_span.into(), self.config().verbose));
+        self.register_inner(key, context)
+    }
+
+    /// Register an anonymous await-tree without specifying a key. Returns a [`TreeRoot`] that can
+    /// be used to instrument a future.
+    ///
+    /// Anonymous await-trees are not able to be retrieved through the [`Registry::get`] method. Use
+    /// [`Registry::collect_anonymous`] or [`Registry::collect_all`] to collect them.
+    pub fn register_anonymous(&self, root_span: impl Into<Span>) -> TreeRoot {
+        let context = Arc::new(TreeContext::new(root_span.into(), self.config().verbose));
+        self.register_inner(context.id(), context) // use the private id as the key
     }
 
     /// Get a clone of the await-tree with given key.
@@ -179,6 +198,21 @@ impl Registry {
                     .as_any()
                     .downcast_ref::<K>()
                     .map(|k| (k.clone(), v.tree().clone()))
+            })
+            .collect()
+    }
+
+    /// Collect the snapshots of all await-trees registered with [`Registry::register_anonymous`].
+    pub fn collect_anonymous(&self) -> Vec<Tree> {
+        self.contexts()
+            .read()
+            .iter()
+            .filter_map(|(k, v)| {
+                if k.is_anonymous() {
+                    Some(v.tree().clone())
+                } else {
+                    None
+                }
             })
             .collect()
     }
@@ -211,6 +245,9 @@ mod tests {
         let _unit = registry.register((), "()");
         let _unit_replaced = registry.register((), "[]");
 
+        let _anon = registry.register_anonymous("anon");
+        let _anon = registry.register_anonymous("anon");
+
         let i32s = registry.collect::<i32>();
         assert_eq!(i32s.len(), 3);
 
@@ -219,5 +256,11 @@ mod tests {
 
         let units = registry.collect::<()>();
         assert_eq!(units.len(), 1);
+
+        let anons = registry.collect_anonymous();
+        assert_eq!(anons.len(), 2);
+
+        let all = registry.collect_all();
+        assert_eq!(all.len(), 8);
     }
 }
