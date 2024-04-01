@@ -113,7 +113,7 @@ impl AnyKey {
 
     /// Returns the key as a reference to type `K`, if it is of type `K`.
     ///
-    /// Equivalent to `self.as_any().downcast_ref()`.
+    /// Equivalent to `self.as_any().downcast_ref::<K>()`.
     pub fn downcast_ref<K: Any>(&self) -> Option<&K> {
         self.as_any().downcast_ref()
     }
