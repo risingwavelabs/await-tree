@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use std::any::Any;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::sync::{Arc, Weak};
 
@@ -53,7 +53,7 @@ trait ObjKey: DynHash + DynEq + Debug + Send + Sync + 'static {}
 impl<T> ObjKey for T where T: DynHash + DynEq + Debug + Send + Sync + 'static {}
 
 /// Type-erased key for the [`Registry`].
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AnyKey(Arc<dyn ObjKey>);
 
 impl PartialEq for AnyKey {
@@ -70,6 +70,25 @@ impl Hash for AnyKey {
     }
 }
 
+impl Debug for AnyKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl Display for AnyKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: for all `impl Display`?
+        if let Some(s) = self.as_any().downcast_ref::<String>() {
+            write!(f, "{}", s)
+        } else if let Some(s) = self.as_any().downcast_ref::<&str>() {
+            write!(f, "{}", s)
+        } else {
+            write!(f, "{:?}", self)
+        }
+    }
+}
+
 impl AnyKey {
     fn new(key: impl ObjKey) -> Self {
         Self(Arc::new(key))
@@ -80,9 +99,23 @@ impl AnyKey {
         self.0.as_ref().as_any()
     }
 
-    /// Returns whether this key corresponds to an anonymous await-tree.
+    /// Returns whether the key is of type `K`.
+    ///
+    /// Equivalent to `self.as_any().is::<K>()`.
+    pub fn is<K: Any>(&self) -> bool {
+        self.as_any().is::<K>()
+    }
+
+    /// Returns whether the key corresponds to an anonymous await-tree.
     pub fn is_anonymous(&self) -> bool {
         self.as_any().is::<ContextId>()
+    }
+
+    /// Returns the key as a reference to type `K`, if it is of type `K`.
+    ///
+    /// Equivalent to `self.as_any().downcast_ref::<K>()`.
+    pub fn downcast_ref<K: Any>(&self) -> Option<&K> {
+        self.as_any().downcast_ref()
     }
 }
 
