@@ -25,16 +25,15 @@ mod registry;
 mod root;
 mod spawn;
 
-pub use context::current_tree;
-use flexstr::SharedStr;
-pub use future::Instrumented;
-pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry};
-pub use root::TreeRoot;
-pub use spawn::{spawn, spawn_anonymous};
+pub use context::*;
+pub use future::*;
+pub use registry::*;
+pub use root::*;
+pub use spawn::*;
 
 /// A cheaply cloneable span in the await-tree.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Span(SharedStr);
+pub struct Span(flexstr::SharedStr);
 
 impl Span {
     pub(crate) fn as_str(&self) -> &str {
@@ -44,7 +43,7 @@ impl Span {
 
 impl<S: AsRef<str>> From<S> for Span {
     fn from(value: S) -> Self {
-        Self(SharedStr::from_ref(value))
+        Self(flexstr::SharedStr::from_ref(value))
     }
 }
 
