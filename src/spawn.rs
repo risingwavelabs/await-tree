@@ -27,7 +27,7 @@ use crate::{Key, Registry, Span};
 /// [`JoinHandle`] for it.
 ///
 /// The spawned task will be registered in the current [`Registry`](crate::Registry) returned by
-/// [`Registry::current`] with the given [`Key`], if it exists. Otherwise, this is equivalent to
+/// [`Registry::try_current`] with the given [`Key`], if it exists. Otherwise, this is equivalent to
 /// [`tokio::spawn`].
 pub fn spawn<T>(key: impl Key, root_span: impl Into<Span>, future: T) -> JoinHandle<T::Output>
 where
@@ -45,7 +45,8 @@ where
 /// [`JoinHandle`] for it.
 ///
 /// The spawned task will be registered in the current [`Registry`](crate::Registry) returned by
-/// [`Registry::current`] , if it exists. Otherwise, this is equivalent to [`tokio::spawn`].
+/// [`Registry::try_current`] anonymously, if it exists. Otherwise, this is equivalent to
+/// [`tokio::spawn`].
 pub fn spawn_anonymous<T>(root_span: impl Into<Span>, future: T) -> JoinHandle<T::Output>
 where
     T: Future + Send + 'static,

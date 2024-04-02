@@ -18,8 +18,8 @@ async fn bar(i: i32) {
 
 async fn baz(i: i32) {
     // runtime `String` span is also supported
-    pending()
-        .instrument_await(format!("pending in baz {i}"))
+    work()
+        .instrument_await(format!("working in baz {i}"))
         .await
 }
 
@@ -32,18 +32,19 @@ async fn foo() {
     .await;
 }
 
-let root = register("foo");
-tokio::spawn(root.instrument(foo()));
+init_global_registry(Config::default());
+
+await_tree::spawn("foo", "foo", foo());
 
 sleep(Duration::from_secs(1)).await;
-let tree = get_tree("foo");
+let tree = Registry::current().get("foo").unwrap();
 
 // foo [1.006s]
 //   bar [1.006s]
 //     baz in bar [1.006s]
-//       pending in baz 3 [1.006s]
+//       working in baz 3 [1.006s]
 //   baz [1.006s]
-//     pending in baz 2 [1.006s]
+//     working in baz 2 [1.006s]
 println!("{tree}");
 ```
 
@@ -52,6 +53,7 @@ println!("{tree}");
 [`tokio-rs/async-backtrace`](https://github.com/tokio-rs/async-backtrace) is a similar crate that also provides the ability to dump the execution tree of async tasks. Here are some differences between `await-tree` and `async-backtrace`:
 
 **Pros of `await-tree`**:
+
 - `await-tree` support customizing the span with runtime `String`, while `async-backtrace` only supports function name and line number.
 
   This is useful when we want to annotate the span with some dynamic information, such as the identifier of a shared resource (e.g., a lock), to see how the contention happens among different tasks.
@@ -67,6 +69,7 @@ println!("{tree}");
 - `await-tree` maintains the tree structure separately from the `Future` itself, which enables developers to dump the tree at any time with nearly no contention, no matter the `Future` is under active polling or has been pending. For comparison, `async-backtrace` has to [wait](https://docs.rs/async-backtrace/0.2.5/async_backtrace/fn.taskdump_tree.html) for the polling to complete before dumping the tree, which may cause a long delay.
 
 **Pros of `async-backtrace`**:
+
 - `async-backtrace` is under the Tokio organization.
 
 ## License
