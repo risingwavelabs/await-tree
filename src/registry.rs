@@ -52,6 +52,16 @@ impl<T> Key for T where T: Hash + Eq + Debug + Send + Sync + 'static {}
 trait ObjKey: DynHash + DynEq + Debug + Send + Sync + 'static {}
 impl<T> ObjKey for T where T: DynHash + DynEq + Debug + Send + Sync + 'static {}
 
+/// Key type for anonymous await-trees.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct AnonymousKey(ContextId);
+
+impl Display for AnonymousKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Anonymous #{}", self.0 .0)
+    }
+}
+
 /// Type-erased key for the [`Registry`].
 #[derive(Clone)]
 pub struct AnyKey(Arc<dyn ObjKey>);
@@ -79,13 +89,18 @@ impl Debug for AnyKey {
 impl Display for AnyKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // TODO: for all `impl Display`?
-        if let Some(s) = self.as_any().downcast_ref::<String>() {
-            write!(f, "{}", s)
-        } else if let Some(s) = self.as_any().downcast_ref::<&str>() {
-            write!(f, "{}", s)
-        } else {
-            write!(f, "{:?}", self)
+        macro_rules! delegate_to_display {
+            ($($t:ty),* $(,)?) => {
+                $(
+                    if let Some(k) = self.as_any().downcast_ref::<$t>() {
+                        return write!(f, "{}", k);
+                    }
+                )*
+            };
         }
+        delegate_to_display!(String, &str, AnonymousKey);
+
+        write!(f, "{:?}", self)
     }
 }
 
@@ -108,7 +123,7 @@ impl AnyKey {
 
     /// Returns whether the key corresponds to an anonymous await-tree.
     pub fn is_anonymous(&self) -> bool {
-        self.as_any().is::<ContextId>()
+        self.as_any().is::<AnonymousKey>()
     }
 
     /// Returns the key as a reference to type `K`, if it is of type `K`.
@@ -214,7 +229,7 @@ impl Registry {
     // only)?
     pub fn register_anonymous(&self, root_span: impl Into<Span>) -> TreeRoot {
         let context = Arc::new(TreeContext::new(root_span.into(), self.config().verbose));
-        self.register_inner(context.id(), context) // use the private id as the key
+        self.register_inner(AnonymousKey(context.id()), context) // use the private id as the key
     }
 
     /// Get a clone of the await-tree with given key.

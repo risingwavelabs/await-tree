@@ -33,6 +33,17 @@ async fn print() {
 
     // Access the registry anywhere and collect all trees.
     for (key, tree) in Registry::current().collect_all() {
+        // [Actor 42]
+        // foo [1.003s]
+        //   bar [1.003s]
+        //     pending [1.003s]
+        //
+        // [Anonymous #2]
+        // spawn bar [1.003s]
+        //   pending [1.003s]
+        //
+        // [Print]
+        // print [1.003s]
         println!("[{}]\n{}\n", key, tree);
     }
 }
