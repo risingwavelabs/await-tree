@@ -20,6 +20,7 @@ use std::future::Future;
 
 mod context;
 mod future;
+mod global;
 mod obj_utils;
 mod registry;
 mod root;
@@ -27,6 +28,7 @@ mod spawn;
 
 pub use context::*;
 pub use future::*;
+pub use global::init_global_registry;
 pub use registry::*;
 pub use root::*;
 pub use spawn::*;

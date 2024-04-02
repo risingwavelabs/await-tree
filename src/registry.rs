@@ -167,6 +167,24 @@ impl Registry {
         )
     }
 
+    /// Returns the current registry, if exists.
+    ///
+    /// 1. If the current task is registered with a registry, returns the registry.
+    /// 2. If the global registry is initialized with
+    ///   [`init_global_registry`](crate::global::init_global_registry), returns the global
+    ///   registry.
+    /// 3. Otherwise, returns `None`.
+    pub fn try_current() -> Option<Self> {
+        crate::root::current_registry()
+    }
+
+    /// Returns the current registry, panics if not exists.
+    ///
+    /// See [`Registry::try_current`] for more information.
+    pub fn current() -> Self {
+        Self::try_current().expect("no current registry")
+    }
+
     fn register_inner(&self, key: impl Key, context: Arc<TreeContext>) -> TreeRoot {
         self.contexts()
             .write()
@@ -192,6 +210,8 @@ impl Registry {
     ///
     /// Anonymous await-trees are not able to be retrieved through the [`Registry::get`] method. Use
     /// [`Registry::collect_anonymous`] or [`Registry::collect_all`] to collect them.
+    // TODO: we have keyed and anonymous, should we also have a typed-anonymous (for classification
+    // only)?
     pub fn register_anonymous(&self, root_span: impl Into<Span>) -> TreeRoot {
         let context = Arc::new(TreeContext::new(root_span.into(), self.config().verbose));
         self.register_inner(context.id(), context) // use the private id as the key
