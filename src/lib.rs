@@ -12,7 +12,60 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Instrument await-tree for actor-based applications.
+//! Generate accurate and informative tree dumps of asynchronous tasks.
+//!
+//! # Example
+//!
+//! Below is a basic example of how to trace asynchronous tasks with the global registry of the
+//! `await-tree` crate.
+//!
+//! ```rust
+//! # use std::time::Duration;
+//! # use tokio::time::sleep;
+//! # use await_tree::{InstrumentAwait, Registry};
+//! # use futures::future::join;
+//! #
+//! # async fn work() { futures::future::pending::<()>().await }
+//! #
+//! async fn bar(i: i32) {
+//!     // `&'static str` span
+//!     baz(i).instrument_await("baz in bar").await
+//! }
+//!
+//! async fn baz(i: i32) {
+//!     // runtime `String` span is also supported
+//!     work().instrument_await(format!("working in baz {i}")).await
+//! }
+//!
+//! async fn foo() {
+//!     // spans of joined futures will be siblings in the tree
+//!     join(
+//!         bar(3).instrument_await("bar"),
+//!         baz(2).instrument_await("baz"),
+//!     )
+//!     .await;
+//! }
+//!
+//! # #[tokio::main]
+//! # async fn main() {
+//! // Init the global registry to start tracing the tasks.
+//! await_tree::init_global_registry(Default::default());
+//! // Spawn a task with root span "foo" and key "foo".
+//! await_tree::spawn("foo", "foo", foo());
+//! // Let the tasks run for a while.
+//! sleep(Duration::from_secs(1)).await;
+//! // Get the tree of the task with key "foo".
+//! let tree = Registry::current().get("foo").unwrap();
+//!
+//! // foo [1.006s]
+//! //   bar [1.006s]
+//! //     baz in bar [1.006s]
+//! //       working in baz 3 [1.006s]
+//! //   baz [1.006s]
+//! //     working in baz 2 [1.006s]
+//! println!("{tree}");
+//! # }
+//! ```
 
 #![forbid(missing_docs)]
 

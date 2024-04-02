@@ -18,9 +18,7 @@ async fn bar(i: i32) {
 
 async fn baz(i: i32) {
     // runtime `String` span is also supported
-    work()
-        .instrument_await(format!("working in baz {i}"))
-        .await
+    work().instrument_await(format!("working in baz {i}")).await
 }
 
 async fn foo() {
@@ -32,11 +30,13 @@ async fn foo() {
     .await;
 }
 
-init_global_registry(Config::default());
-
+// Init the global registry to start tracing the tasks.
+await_tree::init_global_registry(Default::default());
+// Spawn a task with root span "foo" and key "foo".
 await_tree::spawn("foo", "foo", foo());
-
+// Let the tasks run for a while.
 sleep(Duration::from_secs(1)).await;
+// Get the tree of the task with key "foo".
 let tree = Registry::current().get("foo").unwrap();
 
 // foo [1.006s]
