@@ -1,8 +1,8 @@
 [package]
 name = "await-tree"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
-description = "Instrument await-tree for actor-based applications."
+description = "Generate accurate and informative tree dumps of asynchronous tasks."
 repository = "https://github.com/risingwavelabs/await-tree"
 keywords = ["async", "tokio", "backtrace", "actor"]
 categories = ["development-tools::debugging"]
