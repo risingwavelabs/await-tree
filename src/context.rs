@@ -50,7 +50,7 @@ impl SpanNode {
 /// Also used as the key for anonymous trees in the registry. Intentionally made private to prevent
 /// users from reusing the same id when registering a new tree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct ContextId(u64);
+pub(crate) struct ContextId(pub(crate) u64);
 
 /// An await-tree for a task.
 #[derive(Debug, Clone)]

@@ -16,6 +16,7 @@ use std::future::Future;
 use std::sync::Arc;
 
 use crate::context::TreeContext;
+use crate::global::global_registry;
 use crate::registry::WeakRegistry;
 use crate::Registry;
 
@@ -26,7 +27,7 @@ pub struct TreeRoot {
 }
 
 tokio::task_local! {
-    pub(crate) static ROOT: TreeRoot
+    static ROOT: TreeRoot
 }
 
 pub(crate) fn current_context() -> Option<Arc<TreeContext>> {
@@ -34,7 +35,10 @@ pub(crate) fn current_context() -> Option<Arc<TreeContext>> {
 }
 
 pub(crate) fn current_registry() -> Option<Registry> {
-    ROOT.try_with(|r| r.registry.upgrade()).ok().flatten()
+    let local = || ROOT.try_with(|r| r.registry.upgrade()).ok().flatten();
+    let global = global_registry;
+
+    local().or_else(global)
 }
 
 impl TreeRoot {

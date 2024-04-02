@@ -21,20 +21,20 @@ use std::future::Future;
 
 use tokio::task::JoinHandle;
 
-use crate::root::current_registry;
-use crate::{Key, Span};
+use crate::{Key, Registry, Span};
 
 /// Spawns a new asynchronous task instrumented with the given root [`Span`], returning a
 /// [`JoinHandle`] for it.
 ///
-/// The spawned task will be registered in the current [`Registry`](crate::Registry) with the given
-/// [`Key`], if it exists. Otherwise, this is equivalent to [`tokio::spawn`].
+/// The spawned task will be registered in the current [`Registry`](crate::Registry) returned by
+/// [`Registry::try_current`] with the given [`Key`], if it exists. Otherwise, this is equivalent to
+/// [`tokio::spawn`].
 pub fn spawn<T>(key: impl Key, root_span: impl Into<Span>, future: T) -> JoinHandle<T::Output>
 where
     T: Future + Send + 'static,
     T::Output: Send + 'static,
 {
-    if let Some(registry) = current_registry() {
+    if let Some(registry) = Registry::try_current() {
         tokio::spawn(registry.register(key, root_span).instrument(future))
     } else {
         tokio::spawn(future)
@@ -44,14 +44,15 @@ where
 /// Spawns a new asynchronous task instrumented with the given root [`Span`], returning a
 /// [`JoinHandle`] for it.
 ///
-/// The spawned task will be registered in the current [`Registry`](crate::Registry) anonymously, if
-/// it exists. Otherwise, this is equivalent to [`tokio::spawn`].
+/// The spawned task will be registered in the current [`Registry`](crate::Registry) returned by
+/// [`Registry::try_current`] anonymously, if it exists. Otherwise, this is equivalent to
+/// [`tokio::spawn`].
 pub fn spawn_anonymous<T>(root_span: impl Into<Span>, future: T) -> JoinHandle<T::Output>
 where
     T: Future + Send + 'static,
     T::Output: Send + 'static,
 {
-    if let Some(registry) = current_registry() {
+    if let Some(registry) = Registry::try_current() {
         tokio::spawn(registry.register_anonymous(root_span).instrument(future))
     } else {
         tokio::spawn(future)
