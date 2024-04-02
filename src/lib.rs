@@ -26,12 +26,12 @@ mod registry;
 mod root;
 mod spawn;
 
-pub use context::*;
-pub use future::*;
+pub use context::{current_tree, Tree};
+pub use future::Instrumented;
 pub use global::init_global_registry;
-pub use registry::*;
-pub use root::*;
-pub use spawn::*;
+pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry};
+pub use root::TreeRoot;
+pub use spawn::{spawn, spawn_anonymous};
 
 /// A cheaply cloneable span in the await-tree.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
