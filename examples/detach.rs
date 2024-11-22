@@ -53,7 +53,7 @@ async fn main() {
     tokio::spawn(root.instrument(work(rx)));
 
     sleep(Duration::from_millis(100)).await;
-    let tree = registry.get(&()).unwrap().to_string();
+    let tree = registry.get(()).unwrap().to_string();
 
     // work [106.290ms]
     //   select [106.093ms]
@@ -62,7 +62,7 @@ async fn main() {
     println!("{tree}");
 
     sleep(Duration::from_secs(1)).await;
-    let tree = registry.get(&()).unwrap().to_string();
+    let tree = registry.get(()).unwrap().to_string();
 
     // work [1.112s]
     //   rx [606.944ms]
@@ -72,7 +72,7 @@ async fn main() {
 
     tx.send(()).unwrap();
     sleep(Duration::from_secs(1)).await;
-    let tree = registry.get(&()).unwrap().to_string();
+    let tree = registry.get(()).unwrap().to_string();
 
     // work [2.117s]
     //   fut [2.117s]

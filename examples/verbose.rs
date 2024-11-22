@@ -32,7 +32,7 @@ async fn work(verbose: bool) -> String {
     tokio::spawn(root.instrument(foo()));
 
     sleep(Duration::from_secs(1)).await;
-    registry.get(&()).unwrap().to_string()
+    registry.get(()).unwrap().to_string()
 }
 
 #[tokio::main]
