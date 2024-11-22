@@ -22,6 +22,11 @@ jobs:
         run: cargo clippy --all-targets --all-features
       - name: Run tests
         run: cargo test
+      - name: Run examples
+        run: |
+          for example in $(ls examples/ | sed 's/\.rs$//'); do
+            cargo run --example $example
+          done
 
   semver:
     runs-on: ubuntu-latest
