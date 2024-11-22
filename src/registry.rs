@@ -186,8 +186,8 @@ impl Registry {
     ///
     /// 1. If the current task is registered with a registry, returns the registry.
     /// 2. If the global registry is initialized with
-    ///   [`init_global_registry`](crate::global::init_global_registry), returns the global
-    ///   registry.
+    ///    [`init_global_registry`](crate::global::init_global_registry), returns the global
+    ///    registry.
     /// 3. Otherwise, returns `None`.
     pub fn try_current() -> Option<Self> {
         crate::root::current_registry()
