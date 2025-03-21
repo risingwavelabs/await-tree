@@ -15,7 +15,7 @@
 type SpanName = flexstr::SharedStr;
 
 #[doc(hidden)]
-pub fn fmt_span<'a>(args: std::fmt::Arguments<'a>) -> Span {
+pub fn fmt_span(args: std::fmt::Arguments<'_>) -> Span {
     let name = if let Some(str) = args.as_str() {
         SpanName::from_ref(str)
     } else {
