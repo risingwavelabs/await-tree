@@ -77,7 +77,7 @@ impl std::fmt::Display for Tree {
             f.write_str(&" ".repeat(depth * 2))?;
 
             let inner = arena[node].get();
-            f.write_str(inner.span.as_str())?;
+            f.write_str(&inner.span.name)?;
 
             let elapsed: std::time::Duration = inner.start_time.elapsed().into();
             write!(

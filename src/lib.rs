@@ -85,20 +85,20 @@ pub use future::Instrumented;
 pub use global::init_global_registry;
 pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry};
 pub use root::TreeRoot;
-pub use span::Span;
+pub use span::{Span, SpanExt};
 pub use spawn::{spawn, spawn_anonymous};
 
 /// Attach spans to a future to be traced in the await-tree.
 pub trait InstrumentAwait: Future + Sized {
     /// Instrument the future with a span.
-    fn instrument_await(self, span: impl Into<Span>) -> Instrumented<Self, false> {
+    fn instrument_await(self, span: impl Into<Span>) -> Instrumented<Self> {
         Instrumented::new(self, span.into())
     }
 
     /// Instrument the future with a verbose span, which is optionally enabled based on the registry
     /// configuration.
-    fn verbose_instrument_await(self, span: impl Into<Span>) -> Instrumented<Self, true> {
-        Instrumented::new(self, span.into())
+    fn verbose_instrument_await(self, span: impl Into<Span>) -> Instrumented<Self> {
+        Instrumented::new(self, span.into().verbose())
     }
 }
 impl<F> InstrumentAwait for F where F: Future {}
