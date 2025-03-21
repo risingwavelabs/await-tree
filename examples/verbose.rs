@@ -16,13 +16,13 @@
 
 use std::time::Duration;
 
-use await_tree::{ConfigBuilder, InstrumentAwait, Registry};
+use await_tree::{ConfigBuilder, InstrumentAwait, Registry, SpanExt};
 use futures::future::pending;
 use tokio::time::sleep;
 
 async fn foo() {
     // verbose span will be disabled if the `verbose` flag in the config is false
-    pending().verbose_instrument_await("pending").await
+    pending().instrument_await("pending".verbose()).await
 }
 
 async fn work(verbose: bool) -> String {

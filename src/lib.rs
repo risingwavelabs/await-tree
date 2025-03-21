@@ -94,12 +94,6 @@ pub trait InstrumentAwait: Future + Sized {
     fn instrument_await(self, span: impl Into<Span>) -> Instrumented<Self> {
         Instrumented::new(self, span.into())
     }
-
-    /// Instrument the future with a verbose span, which is optionally enabled based on the registry
-    /// configuration.
-    fn verbose_instrument_await(self, span: impl Into<Span>) -> Instrumented<Self> {
-        Instrumented::new(self, span.into().verbose())
-    }
 }
 impl<F> InstrumentAwait for F where F: Future {}
 
