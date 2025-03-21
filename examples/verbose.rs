@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! This example shows how to use `await-tree` for multiple actors.
+//! This example shows how to mark a span as "verbose", so that it's conditionally
+//! enabled based on the config.
 
 use std::time::Duration;
 
