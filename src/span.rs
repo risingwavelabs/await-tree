@@ -17,28 +17,36 @@ type SpanName = flexstr::SharedStr;
 /// A cheaply cloneable span in the await-tree.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
-    name: SpanName,
-    is_verbose: bool,
-    is_long_running: bool,
+    pub(crate) name: SpanName,
+    pub(crate) is_verbose: bool,
+    pub(crate) is_long_running: bool,
 }
 
 impl Span {
     /// Set the verbose status of the span.
-    pub const fn verbose(mut self) -> Self {
+    pub fn verbose(mut self) -> Self {
         self.is_verbose = true;
         self
     }
 
     /// Set the long-running status of the span.
-    pub const fn long_running(mut self) -> Self {
+    pub fn long_running(mut self) -> Self {
         self.is_long_running = true;
         self
     }
 }
 
-impl Span {
-    pub(crate) fn as_str(&self) -> &str {
-        self.name.as_str()
+/// Convert a type into a span and set attributes.
+#[easy_ext::ext(SpanExt)]
+impl<T: Into<Span>> T {
+    /// Set the verbose status of the span.
+    pub fn verbose(self) -> Span {
+        self.into().verbose()
+    }
+
+    /// Set the long-running status of the span.
+    pub fn long_running(self) -> Span {
+        self.into().long_running()
     }
 }
 
