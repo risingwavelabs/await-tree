@@ -23,28 +23,28 @@ pub struct Span {
 }
 
 impl Span {
-    /// Set the verbose status of the span.
+    /// Set the verbose attribute of the span.
     pub fn verbose(mut self) -> Self {
         self.is_verbose = true;
         self
     }
 
-    /// Set the long-running status of the span.
+    /// Set the long-running attribute of the span.
     pub fn long_running(mut self) -> Self {
         self.is_long_running = true;
         self
     }
 }
 
-/// Convert a type into a span and set attributes.
+/// Convert a value into a span and set attributes.
 #[easy_ext::ext(SpanExt)]
 impl<T: Into<Span>> T {
-    /// Set the verbose status of the span.
+    /// Convert `self` into a span and set the verbose attribute.
     pub fn verbose(self) -> Span {
         self.into().verbose()
     }
 
-    /// Set the long-running status of the span.
+    /// Convert `self` into a span and set the long-running attribute.
     pub fn long_running(self) -> Span {
         self.into().long_running()
     }
