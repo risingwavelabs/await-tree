@@ -10,6 +10,7 @@ license = "Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+castaway = "0.2"
 coarsetime = "0.1"
 derive_builder = "0.20"
 flexstr = "0.9"
@@ -17,6 +18,7 @@ indextree = "4"
 itertools = "0.12"
 parking_lot = "0.12"
 pin-project = "1"
+static_assertions = "1"
 tokio = { version = "1", features = ["rt"] }
 tracing = "0.1"
 weak-table = "0.3.2"

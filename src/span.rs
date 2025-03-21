@@ -12,26 +12,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-type Name = flexstr::SharedStr;
+type SpanName = flexstr::SharedStr;
 
 /// A cheaply cloneable span in the await-tree.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Span(Name);
+pub struct Span {
+    name: SpanName,
+    is_verbose: bool,
+    is_long_running: bool,
+}
+
+impl Span {
+    /// Set the verbose status of the span.
+    pub const fn verbose(mut self) -> Self {
+        self.is_verbose = true;
+        self
+    }
+
+    /// Set the long-running status of the span.
+    pub const fn long_running(mut self) -> Self {
+        self.is_long_running = true;
+        self
+    }
+}
 
 impl Span {
     pub(crate) fn as_str(&self) -> &str {
-        self.0.as_str()
+        self.name.as_str()
     }
 }
 
 impl<S: AsRef<str>> From<S> for Span {
     fn from(value: S) -> Self {
-        Self(Name::from_ref(value))
+        Self {
+            name: SpanName::from_ref(value),
+            is_long_running: false,
+            is_verbose: false,
+        }
     }
 }
 
 impl std::fmt::Display for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+        self.name.fmt(f)
     }
 }
