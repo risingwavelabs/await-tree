@@ -83,7 +83,7 @@ impl std::fmt::Display for Tree {
             write!(
                 f,
                 " [{}{:.3?}]",
-                if depth > 0 && elapsed.as_secs() >= 10 {
+                if !inner.span.is_long_running && elapsed.as_secs() >= 10 {
                     "!!! "
                 } else {
                     ""
@@ -223,6 +223,9 @@ impl TreeContext {
     pub(crate) fn new(root_span: Span, verbose: bool) -> Self {
         static ID: AtomicU64 = AtomicU64::new(0);
         let id = ID.fetch_add(1, Ordering::Relaxed);
+
+        // Always make the root span long-running.
+        let root_span = root_span.long_running();
 
         let mut arena = Arena::new();
         let root = arena.new_node(SpanNode::new(root_span));
