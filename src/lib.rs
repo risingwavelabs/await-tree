@@ -77,6 +77,7 @@ mod global;
 mod obj_utils;
 mod registry;
 mod root;
+mod span;
 mod spawn;
 
 pub use context::{current_tree, Tree};
@@ -84,29 +85,8 @@ pub use future::Instrumented;
 pub use global::init_global_registry;
 pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry};
 pub use root::TreeRoot;
+pub use span::Span;
 pub use spawn::{spawn, spawn_anonymous};
-
-/// A cheaply cloneable span in the await-tree.
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Span(flexstr::SharedStr);
-
-impl Span {
-    pub(crate) fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
-
-impl<S: AsRef<str>> From<S> for Span {
-    fn from(value: S) -> Self {
-        Self(flexstr::SharedStr::from_ref(value))
-    }
-}
-
-impl std::fmt::Display for Span {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
 
 /// Attach spans to a future to be traced in the await-tree.
 pub trait InstrumentAwait: Future + Sized {
