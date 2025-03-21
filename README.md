@@ -18,7 +18,7 @@ async fn bar(i: i32) {
 
 async fn baz(i: i32) {
     // runtime `String` span is also supported
-    work().instrument_await(format!("working in baz {i}")).await
+    work().instrument_await(span!("working in baz {i}")).await
 }
 
 async fn foo() {

@@ -16,7 +16,7 @@
 
 use std::time::Duration;
 
-use await_tree::{Config, InstrumentAwait, Registry};
+use await_tree::{span, Config, InstrumentAwait, Registry};
 use futures::future::{join, pending};
 use tokio::time::sleep;
 
@@ -28,7 +28,7 @@ async fn bar(i: i32) {
 async fn baz(i: i32) {
     // runtime `String` span is also supported
     pending()
-        .instrument_await(format!("pending in baz {i}"))
+        .instrument_await(span!("pending in baz {i}"))
         .await
 }
 

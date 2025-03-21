@@ -17,7 +17,7 @@ use futures::{pin_mut, FutureExt, Stream, StreamExt};
 use itertools::Itertools;
 
 use crate::root::current_context;
-use crate::{Config, InstrumentAwait, Registry};
+use crate::{span, Config, InstrumentAwait, Registry};
 
 async fn sleep(time: u64) {
     tokio::time::sleep(std::time::Duration::from_millis(time)).await;
@@ -77,7 +77,7 @@ async fn hello() {
         join_all([
             sleep(1000)
                 .boxed()
-                .instrument_await(format!("sleep {}", 1000)),
+                .instrument_await(span!("sleep {}", 1000)),
             sleep(2000).boxed().instrument_await("sleep 2000"),
             sleep_nested().boxed().instrument_await("sleep nested"),
             multi_sleep().boxed().instrument_await("multi sleep"),
@@ -111,13 +111,13 @@ async fn hello() {
 
             'outer: loop {
                 tokio::select! {
-                    _ = stream1.next().instrument_await(format!("stream1 next {count}")) => {},
-                    r = stream2.next().instrument_await(format!("stream2 next {count}")) => {
+                    _ = stream1.next().instrument_await(span!("stream1 next {count}")) => {},
+                    r = stream2.next().instrument_await(span!("stream2 next {count}")) => {
                         if r.is_none() { break 'outer }
                     },
                 }
                 sleep(50)
-                    .instrument_await(format!("sleep before next stream poll: {count}"))
+                    .instrument_await(span!("sleep before next stream poll: {count}"))
                     .await;
                 count += 1;
             }

@@ -16,13 +16,13 @@
 
 use std::time::Duration;
 
-use await_tree::{Config, InstrumentAwait, Registry};
+use await_tree::{span, Config, InstrumentAwait, Registry};
 use futures::future::pending;
 use itertools::Itertools;
 use tokio::time::sleep;
 
 async fn work(i: i32) {
-    foo().instrument_await(format!("actor work {i}")).await
+    foo().instrument_await(span!("actor work {i}")).await
 }
 
 async fn foo() {
