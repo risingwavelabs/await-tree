@@ -18,10 +18,8 @@
 use std::time::Duration;
 
 use await_tree::{Config, InstrumentAwait, Registry, SpanExt};
-use futures::{
-    future::{pending, select},
-    FutureExt,
-};
+use futures::future::{pending, select};
+use futures::FutureExt;
 use tokio::time::sleep;
 
 async fn long_running_child() {

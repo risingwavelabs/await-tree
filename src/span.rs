@@ -24,12 +24,23 @@ pub struct Span {
 
 impl Span {
     /// Set the verbose attribute of the span.
+    ///
+    /// When a span is marked as verbose, it will be included in the output
+    /// only if the `verbose` flag in the [`Config`] is set.
+    ///
+    /// [`Config`]: crate::Config
     pub fn verbose(mut self) -> Self {
         self.is_verbose = true;
         self
     }
 
     /// Set the long-running attribute of the span.
+    ///
+    /// When a span is marked as long-running, it will not be marked as "!!!"
+    /// in the formatted [`Tree`] if it takes too long to complete. The root
+    /// span is always marked as long-running.
+    ///
+    /// [`Tree`]: crate::Tree
     pub fn long_running(mut self) -> Self {
         self.is_long_running = true;
         self
@@ -40,11 +51,15 @@ impl Span {
 #[easy_ext::ext(SpanExt)]
 impl<T: Into<Span>> T {
     /// Convert `self` into a span and set the verbose attribute.
+    ///
+    /// See [`Span::verbose`] for more details.
     pub fn verbose(self) -> Span {
         self.into().verbose()
     }
 
     /// Convert `self` into a span and set the long-running attribute.
+    ///
+    /// See [`Span::long_running`] for more details.
     pub fn long_running(self) -> Span {
         self.into().long_running()
     }
