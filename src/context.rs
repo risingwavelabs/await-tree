@@ -65,6 +65,89 @@ pub struct Tree {
     current: NodeId,
 }
 
+mod serde_impl {
+    use serde::{ser::SerializeStruct as _, Serialize};
+
+    use super::*;
+
+    struct SpanNodeSer<'a> {
+        arena: &'a Arena<SpanNode>,
+        node: NodeId,
+    }
+
+    impl<'a> Serialize for SpanNodeSer<'a> {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            let inner = self.arena[self.node].get();
+            let mut s = serializer.serialize_struct("Span", 4)?;
+
+            let id: usize = self.node.into();
+            s.serialize_field("id", &id)?;
+
+            s.serialize_field("span", &inner.span)?;
+
+            let elapsed: std::time::Duration = inner.start_time.elapsed().into();
+            s.serialize_field("elapsed", &elapsed)?;
+
+            // serialize the children
+            let children = self
+                .node
+                .children(self.arena)
+                .map(|node| SpanNodeSer {
+                    arena: self.arena,
+                    node,
+                })
+                .sorted_by_key(|child| {
+                    let inner = self.arena[child.node].get();
+                    inner.start_time
+                })
+                .collect_vec();
+            s.serialize_field("children", &children)?;
+
+            s.end()
+        }
+    }
+
+    impl Serialize for Tree {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            let mut s = serializer.serialize_struct("Tree", 2)?;
+
+            // serialize the main tree
+            s.serialize_field(
+                "tree",
+                &SpanNodeSer {
+                    arena: &self.arena,
+                    node: self.root,
+                },
+            )?;
+
+            // serialize the detached nodes
+            let mut detached = Vec::new();
+            for node in self.arena.iter().filter(|n| !n.is_removed()) {
+                let id = self.arena.get_node_id(node).unwrap();
+                if id == self.root {
+                    continue;
+                }
+                if node.parent().is_none() {
+                    detached.push(SpanNodeSer {
+                        arena: &self.arena,
+                        node: id,
+                    });
+                }
+            }
+
+            s.serialize_field("detached", &detached)?;
+
+            s.end()
+        }
+    }
+}
+
 impl std::fmt::Display for Tree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fn fmt_node(
