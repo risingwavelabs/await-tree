@@ -65,6 +65,7 @@ pub struct Tree {
     current: NodeId,
 }
 
+// TODO: make this optional with feature flag
 mod serde_impl {
     use serde::{ser::SerializeStruct as _, Serialize};
 
@@ -83,15 +84,13 @@ mod serde_impl {
             let inner = self.arena[self.node].get();
             let mut s = serializer.serialize_struct("Span", 4)?;
 
+            // Basic info.
             let id: usize = self.node.into();
             s.serialize_field("id", &id)?;
-
             s.serialize_field("span", &inner.span)?;
+            s.serialize_field("elapsed_ns", &inner.start_time.elapsed().as_nanos())?;
 
-            let elapsed: std::time::Duration = inner.start_time.elapsed().into();
-            s.serialize_field("elapsed", &elapsed)?;
-
-            // serialize the children
+            // Children.
             let children = (self.node.children(self.arena))
                 .map(|node| SpanNodeSer {
                     arena: self.arena,
@@ -118,7 +117,7 @@ mod serde_impl {
             let current_id: usize = self.current.into();
             s.serialize_field("current", &current_id)?;
 
-            // Serialize the main tree.
+            // The main tree.
             s.serialize_field(
                 "tree",
                 &SpanNodeSer {
@@ -127,7 +126,7 @@ mod serde_impl {
                 },
             )?;
 
-            // Serialize the detached nodes.
+            // The detached subtrees.
             let detached = self
                 .detached_roots()
                 .map(|node| SpanNodeSer {
@@ -135,7 +134,6 @@ mod serde_impl {
                     node,
                 })
                 .collect_vec();
-
             s.serialize_field("detached", &detached)?;
 
             s.end()
