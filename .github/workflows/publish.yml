@@ -1,0 +1,27 @@
+name: Publish to crates.io
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Run the check-test workflow first
+  check-test:
+    uses: ./.github/workflows/check-test.yaml
+
+  # Publish to crates.io after checks pass
+  publish:
+    name: Publish to crates.io
+    needs: check-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Publish to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
