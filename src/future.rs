@@ -38,13 +38,13 @@ enum State {
 ///
 /// [ia]: crate::InstrumentAwait
 #[pin_project(PinnedDrop)]
-pub struct Instrumented<F: Future, const VERBOSE: bool> {
+pub struct Instrumented<F: Future> {
     #[pin]
     inner: F,
     state: State,
 }
 
-impl<F: Future, const VERBOSE: bool> Instrumented<F, VERBOSE> {
+impl<F: Future> Instrumented<F> {
     pub(crate) fn new(inner: F, span: Span) -> Self {
         Self {
             inner,
@@ -53,7 +53,7 @@ impl<F: Future, const VERBOSE: bool> Instrumented<F, VERBOSE> {
     }
 }
 
-impl<F: Future, const VERBOSE: bool> Future for Instrumented<F, VERBOSE> {
+impl<F: Future> Future for Instrumented<F> {
     type Output = F::Output;
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
@@ -64,7 +64,7 @@ impl<F: Future, const VERBOSE: bool> Future for Instrumented<F, VERBOSE> {
             State::Initial(span) => {
                 match context {
                     Some(c) => {
-                        if !c.verbose() && VERBOSE {
+                        if !c.verbose() && span.is_verbose {
                             // The tracing for this span is disabled according to the verbose
                             // configuration.
                             *this.state = State::Disabled;
@@ -133,7 +133,7 @@ impl<F: Future, const VERBOSE: bool> Future for Instrumented<F, VERBOSE> {
 }
 
 #[pinned_drop]
-impl<F: Future, const VERBOSE: bool> PinnedDrop for Instrumented<F, VERBOSE> {
+impl<F: Future> PinnedDrop for Instrumented<F> {
     fn drop(self: Pin<&mut Self>) {
         let this = self.project();
 

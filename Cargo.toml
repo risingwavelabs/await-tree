@@ -1,6 +1,6 @@
 [package]
 name = "await-tree"
-version = "0.2.2"
+version = "0.3.0-alpha.1"
 edition = "2021"
 description = "Generate accurate and informative tree dumps of asynchronous tasks."
 repository = "https://github.com/risingwavelabs/await-tree"
@@ -12,6 +12,7 @@ license = "Apache-2.0"
 [dependencies]
 coarsetime = "0.1"
 derive_builder = "0.20"
+easy-ext = "1"
 flexstr = "0.9"
 indextree = "4"
 itertools = "0.12"
