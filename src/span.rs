@@ -14,12 +14,49 @@
 
 type SpanName = flexstr::SharedStr;
 
+#[doc(hidden)]
+pub fn fmt_span(args: std::fmt::Arguments<'_>) -> Span {
+    let name = if let Some(str) = args.as_str() {
+        SpanName::from_ref(str)
+    } else {
+        flexstr::flex_fmt(args)
+    };
+    Span::new(name)
+}
+
+/// Creates a new span with formatted name.
+///
+/// [`instrument_await`] accepts any type that implements [`AsRef<str>`] as the span name.
+/// This macro provides similar functionality to [`format!`], but with improved performance
+/// by creating the span name on the stack when possible, avoiding unnecessary allocations.
+///
+/// [`instrument_await`]: crate::InstrumentAwait::instrument_await
+#[macro_export]
+// XXX: Without this extra binding (`let res = ..`), it will make the future `!Send`.
+//      This is also how `std::format!` behaves. But why?
+macro_rules! span {
+    ($($fmt_arg:tt)*) => {{
+        let res = $crate::__private::fmt_span(format_args!($($fmt_arg)*));
+        res
+    }};
+}
+
 /// A cheaply cloneable span in the await-tree.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
     pub(crate) name: SpanName,
     pub(crate) is_verbose: bool,
     pub(crate) is_long_running: bool,
+}
+
+impl Span {
+    fn new(name: SpanName) -> Self {
+        Self {
+            name,
+            is_verbose: false,
+            is_long_running: false,
+        }
+    }
 }
 
 impl Span {
@@ -67,11 +104,7 @@ impl<T: Into<Span>> T {
 
 impl<S: AsRef<str>> From<S> for Span {
     fn from(value: S) -> Self {
-        Self {
-            name: SpanName::from_ref(value),
-            is_long_running: false,
-            is_verbose: false,
-        }
+        Self::new(SpanName::from_ref(value))
     }
 }
 

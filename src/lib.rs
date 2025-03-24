@@ -22,7 +22,7 @@
 //! ```rust
 //! # use std::time::Duration;
 //! # use tokio::time::sleep;
-//! # use await_tree::{InstrumentAwait, Registry};
+//! # use await_tree::{InstrumentAwait, Registry, span};
 //! # use futures::future::join;
 //! #
 //! # async fn work() { futures::future::pending::<()>().await }
@@ -34,7 +34,7 @@
 //!
 //! async fn baz(i: i32) {
 //!     // runtime `String` span is also supported
-//!     work().instrument_await(format!("working in baz {i}")).await
+//!     work().instrument_await(span!("working in baz {i}")).await
 //! }
 //!
 //! async fn foo() {
@@ -87,6 +87,11 @@ pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Regis
 pub use root::TreeRoot;
 pub use span::{Span, SpanExt};
 pub use spawn::{spawn, spawn_anonymous};
+
+#[doc(hidden)]
+pub mod __private {
+    pub use crate::span::fmt_span;
+}
 
 /// Attach spans to a future to be traced in the await-tree.
 pub trait InstrumentAwait: Future + Sized {
