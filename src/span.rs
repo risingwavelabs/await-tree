@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use serde::Serialize;
-
 type SpanName = flexstr::SharedStr;
 
 #[doc(hidden)]
@@ -44,7 +42,7 @@ macro_rules! span {
 }
 
 /// A cheaply cloneable span in the await-tree.
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 pub struct Span {
     pub(crate) name: SpanName,
     pub(crate) is_verbose: bool,

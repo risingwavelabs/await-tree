@@ -67,7 +67,8 @@ pub struct Tree {
 
 // TODO: make this optional with feature flag
 mod serde_impl {
-    use serde::{ser::SerializeStruct as _, Serialize};
+    use serde::ser::SerializeStruct as _;
+    use serde::Serialize;
 
     use super::*;
 
@@ -76,7 +77,7 @@ mod serde_impl {
         node: NodeId,
     }
 
-    impl<'a> Serialize for SpanNodeSer<'a> {
+    impl Serialize for SpanNodeSer<'_> {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: serde::Serializer,
@@ -220,7 +221,7 @@ impl Tree {
             .iter()
             .filter(|n| !n.is_removed()) // still valid
             .map(|node| self.arena.get_node_id(node).unwrap()) // get id
-            .filter(|&id| id != self.root && self.arena[id].parent().is_none()) // no parent but not root
+            .filter(|&id| id != self.root && self.arena[id].parent().is_none()) // no parent but non-root
     }
 
     /// Push a new span as a child of current span, used for future firstly polled.
