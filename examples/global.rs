@@ -13,6 +13,11 @@
 // limitations under the License.
 
 //! This example shows the usage of the global registry.
+//!
+//! Note: This example requires the `tokio` feature to be enabled.
+//! Run with: `cargo run --example global --features tokio`
+
+#![cfg(feature = "tokio")]
 
 use std::time::Duration;
 
