@@ -45,3 +45,7 @@ incremental = false
 debug-assertions = false
 overflow-checks = false
 rpath = false
+
+[[example]]
+name = "serde"
+required-features = ["serde"]
