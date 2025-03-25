@@ -26,7 +26,7 @@ pub struct TreeRoot {
     pub(crate) registry: WeakRegistry,
 }
 
-tokio::task_local! {
+task_local::task_local! {
     static ROOT: TreeRoot
 }
 
