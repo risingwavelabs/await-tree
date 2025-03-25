@@ -11,6 +11,7 @@ license = "Apache-2.0"
 
 [features]
 serde = ["dep:serde", "flexstr/serde"]
+tokio = ["dep:tokio"]
 
 [dependencies]
 coarsetime = "0.1"
@@ -23,7 +24,7 @@ parking_lot = "0.12"
 pin-project = "1"
 serde = { version = "1", features = ["derive"], optional = true }
 task-local = "0.1"
-tokio = { version = "1", features = ["rt"] }
+tokio = { version = "1", features = ["rt"], optional = true }
 tracing = "0.1"
 weak-table = "0.3.2"
 
@@ -31,7 +32,7 @@ weak-table = "0.3.2"
 criterion = { version = "0.5", features = ["async", "async_tokio"] }
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
 serde_json = "1"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "macros"] }
+tokio = { version = "1", features = ["full"] }
 
 [[bench]]
 name = "basic"
@@ -50,3 +51,7 @@ rpath = false
 [[example]]
 name = "serde"
 required-features = ["serde"]
+
+[[example]]
+name = "spawn"
+required-features = ["tokio"]

@@ -14,6 +14,11 @@
 
 //! This example shows how to spawn tasks with `await_tree::spawn` that are automatically registered
 //! to the current registry of the scope.
+//!
+//! Note: This example requires the `tokio` feature to be enabled.
+//! Run with: `cargo run --example spawn --features tokio`
+
+#![cfg(feature = "tokio")]
 
 use std::time::Duration;
 

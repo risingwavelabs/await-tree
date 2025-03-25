@@ -15,8 +15,6 @@
 // TODO: should we consider exposing `current_registry`
 // so that users can not only spawn tasks but also get and collect trees?
 
-// TODO: should we support "global registry" for users to quick start?
-
 use std::future::Future;
 
 use tokio::task::JoinHandle;

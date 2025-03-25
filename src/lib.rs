@@ -78,6 +78,7 @@ mod obj_utils;
 mod registry;
 mod root;
 mod span;
+#[cfg(feature = "tokio")]
 mod spawn;
 
 pub use context::{current_tree, Tree};
@@ -86,6 +87,7 @@ pub use global::init_global_registry;
 pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry};
 pub use root::TreeRoot;
 pub use span::{Span, SpanExt};
+#[cfg(feature = "tokio")]
 pub use spawn::{spawn, spawn_anonymous};
 
 #[doc(hidden)]
