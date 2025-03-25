@@ -1,6 +1,6 @@
 [package]
 name = "await-tree"
-version = "0.3.0-alpha.1"
+version = "0.3.0-alpha.2"
 edition = "2021"
 description = "Generate accurate and informative tree dumps of asynchronous tasks."
 repository = "https://github.com/risingwavelabs/await-tree"
@@ -9,16 +9,19 @@ categories = ["development-tools::debugging"]
 license = "Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+serde = ["dep:serde", "flexstr/serde"]
+
 [dependencies]
 coarsetime = "0.1"
 derive_builder = "0.20"
 easy-ext = "1"
-flexstr = { version = "0.9", features = ["serde"] }
+flexstr = "0.9"
 indextree = "4"
 itertools = "0.12"
 parking_lot = "0.12"
 pin-project = "1"
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive"], optional = true }
 tokio = { version = "1", features = ["rt"] }
 tracing = "0.1"
 weak-table = "0.3.2"
@@ -42,3 +45,7 @@ incremental = false
 debug-assertions = false
 overflow-checks = false
 rpath = false
+
+[[example]]
+name = "serde"
+required-features = ["serde"]

@@ -48,6 +48,22 @@ let tree = Registry::current().get("foo").unwrap();
 println!("{tree}");
 ```
 
+## Features
+
+`await-tree` provides the following optional features:
+
+- `serde`: Enables serialization of the tree structure using serde. This allows you to serialize the tree to formats like JSON, as shown in the [serde example](./examples/serde.rs).
+
+  ```rust
+  // Enable the serde feature in Cargo.toml
+  // await-tree = { version = "<version>", features = ["serde"] }
+
+  // Then you can serialize the tree
+  let tree = Registry::current().get("foo").unwrap();
+  let json = serde_json::to_string_pretty(&tree).unwrap();
+  println!("{json}");
+  ```
+
 ### Compared to `async-backtrace`
 
 [`tokio-rs/async-backtrace`](https://github.com/tokio-rs/async-backtrace) is a similar crate that also provides the ability to dump the execution tree of async tasks. Here are some differences between `await-tree` and `async-backtrace`:

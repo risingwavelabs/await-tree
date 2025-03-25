@@ -15,6 +15,11 @@
 //! This example shows the serialization format of the tree.
 //!
 //! The execution flow is the same as `examples/detach.rs`.
+//!
+//! Note: This example requires the `serde` feature to be enabled.
+//! Run with: `cargo run --example serde --features serde`
+
+#![cfg(feature = "serde")]
 
 use std::time::Duration;
 

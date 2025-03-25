@@ -42,7 +42,8 @@ macro_rules! span {
 }
 
 /// A cheaply cloneable span in the await-tree.
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
     pub(crate) name: SpanName,
     pub(crate) is_verbose: bool,
