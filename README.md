@@ -33,6 +33,7 @@ async fn foo() {
 // Init the global registry to start tracing the tasks.
 await_tree::init_global_registry(Default::default());
 // Spawn a task with root span "foo" and key "foo".
+// Note: The `spawn` function requires the `tokio` feature to be enabled.
 await_tree::spawn("foo", "foo", foo());
 // Let the tasks run for a while.
 sleep(Duration::from_secs(1)).await;
@@ -62,6 +63,19 @@ println!("{tree}");
   let tree = Registry::current().get("foo").unwrap();
   let json = serde_json::to_string_pretty(&tree).unwrap();
   println!("{json}");
+  ```
+
+- `tokio`: Enables integration with the Tokio runtime, providing task spawning capabilities through `spawn` and `spawn_anonymous` functions. This feature is required for the examples that demonstrate spawning tasks.
+
+  ```rust
+  // Enable the tokio feature in Cargo.toml
+  // await-tree = { version = "<version>", features = ["tokio"] }
+
+  // Then you can spawn tasks with await-tree instrumentation
+  await_tree::spawn("task-key", "root_span", async {
+      // Your async code here
+      work().instrument_await("work_span").await;
+  });
   ```
 
 ### Compared to `async-backtrace`
