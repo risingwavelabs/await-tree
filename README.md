@@ -78,7 +78,7 @@ println!("{tree}");
   });
   ```
 
-### Compared to `async-backtrace`
+## Compared to `async-backtrace`
 
 [`tokio-rs/async-backtrace`](https://github.com/tokio-rs/async-backtrace) is a similar crate that also provides the ability to dump the execution tree of async tasks. Here are some differences between `await-tree` and `async-backtrace`:
 
