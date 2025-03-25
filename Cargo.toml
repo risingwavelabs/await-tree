@@ -55,3 +55,7 @@ required-features = ["serde"]
 [[example]]
 name = "spawn"
 required-features = ["tokio"]
+
+[[example]]
+name = "global"
+required-features = ["tokio"]
