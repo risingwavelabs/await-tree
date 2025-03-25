@@ -65,7 +65,7 @@ pub struct Tree {
     current: NodeId,
 }
 
-// TODO: make this optional with feature flag
+#[cfg(feature = "serde")]
 mod serde_impl {
     use serde::ser::SerializeStruct as _;
     use serde::Serialize;

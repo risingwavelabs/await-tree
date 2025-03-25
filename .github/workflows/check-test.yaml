@@ -16,16 +16,29 @@ jobs:
       - uses: actions/checkout@v3
       - name: Format
         run: cargo fmt --check
-      - name: Build
+
+      # Check with all features
+      - name: Build (all features)
         run: cargo build --all-targets --all-features
-      - name: Clippy
+      - name: Clippy (all features)
         run: cargo clippy --all-targets --all-features
+
+      # Check without any features
+      - name: Build (no features)
+        run: cargo build --all-targets
+      - name: Clippy (no features)
+        run: cargo clippy --all-targets
+
+      # Run tests with all features
       - name: Run tests
-        run: cargo test
+        run: cargo test --all-features
+
+      # Run examples
       - name: Run examples
         run: |
           for example in $(ls examples/ | sed 's/\.rs$//'); do
-            cargo run --example $example
+            echo "Running example $example with all features"
+            cargo run --example $example --all-features
           done
 
   semver:
