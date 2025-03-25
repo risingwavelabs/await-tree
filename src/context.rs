@@ -65,6 +65,83 @@ pub struct Tree {
     current: NodeId,
 }
 
+// TODO: make this optional with feature flag
+mod serde_impl {
+    use serde::ser::SerializeStruct as _;
+    use serde::Serialize;
+
+    use super::*;
+
+    struct SpanNodeSer<'a> {
+        arena: &'a Arena<SpanNode>,
+        node: NodeId,
+    }
+
+    impl Serialize for SpanNodeSer<'_> {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            let inner = self.arena[self.node].get();
+            let mut s = serializer.serialize_struct("Span", 4)?;
+
+            // Basic info.
+            let id: usize = self.node.into();
+            s.serialize_field("id", &id)?;
+            s.serialize_field("span", &inner.span)?;
+            s.serialize_field("elapsed_ns", &inner.start_time.elapsed().as_nanos())?;
+
+            // Children.
+            let children = (self.node.children(self.arena))
+                .map(|node| SpanNodeSer {
+                    arena: self.arena,
+                    node,
+                })
+                .sorted_by_key(|child| {
+                    let inner = self.arena[child.node].get();
+                    inner.start_time
+                })
+                .collect_vec();
+            s.serialize_field("children", &children)?;
+
+            s.end()
+        }
+    }
+
+    impl Serialize for Tree {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            let mut s = serializer.serialize_struct("Tree", 3)?;
+
+            let current_id: usize = self.current.into();
+            s.serialize_field("current", &current_id)?;
+
+            // The main tree.
+            s.serialize_field(
+                "tree",
+                &SpanNodeSer {
+                    arena: &self.arena,
+                    node: self.root,
+                },
+            )?;
+
+            // The detached subtrees.
+            let detached = self
+                .detached_roots()
+                .map(|node| SpanNodeSer {
+                    arena: &self.arena,
+                    node,
+                })
+                .collect_vec();
+            s.serialize_field("detached", &detached)?;
+
+            s.end()
+        }
+    }
+}
+
 impl std::fmt::Display for Tree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fn fmt_node(
@@ -109,15 +186,9 @@ impl std::fmt::Display for Tree {
         fmt_node(f, &self.arena, self.root, 0, self.current)?;
 
         // Format all detached spans.
-        for node in self.arena.iter().filter(|n| !n.is_removed()) {
-            let id = self.arena.get_node_id(node).unwrap();
-            if id == self.root {
-                continue;
-            }
-            if node.parent().is_none() {
-                writeln!(f, "[Detached {id}]")?;
-                fmt_node(f, &self.arena, id, 1, self.current)?;
-            }
+        for node in self.detached_roots() {
+            writeln!(f, "[Detached {node}]")?;
+            fmt_node(f, &self.arena, node, 1, self.current)?;
         }
 
         Ok(())
@@ -142,6 +213,15 @@ impl Tree {
                     && self.arena.get_node_id(n).unwrap() != self.root
             })
             .count()
+    }
+
+    /// Returns an iterator over the root nodes of detached subtrees.
+    fn detached_roots(&self) -> impl Iterator<Item = NodeId> + '_ {
+        self.arena
+            .iter()
+            .filter(|n| !n.is_removed()) // still valid
+            .map(|node| self.arena.get_node_id(node).unwrap()) // get id
+            .filter(|&id| id != self.root && self.arena[id].parent().is_none()) // no parent but non-root
     }
 
     /// Push a new span as a child of current span, used for future firstly polled.
