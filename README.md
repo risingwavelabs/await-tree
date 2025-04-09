@@ -12,7 +12,7 @@ which is constantly transformed over the polling, completion, and cancellation o
 
 ```rust
 async fn bar(i: i32) {
-    // `&'static str` span
+    // static span
     baz(i).instrument_await("baz in bar").await
 }
 
@@ -24,8 +24,9 @@ async fn baz(i: i32) {
 async fn foo() {
     // spans of joined futures will be siblings in the tree
     join(
-        bar(3).instrument_await("bar"),
-        baz(2).instrument_await("baz"),
+        // attribute the span with `long_running` or `verbose`
+        bar(3).instrument_await("bar".long_running()),
+        baz(2).instrument_await("baz".verbose()),
     )
     .await;
 }
