@@ -84,7 +84,7 @@ mod spawn;
 pub use context::{current_tree, Tree};
 pub use future::Instrumented;
 pub use global::init_global_registry;
-pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry};
+pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry, ToRootSpan};
 pub use root::TreeRoot;
 pub use span::{Span, SpanExt};
 #[cfg(feature = "tokio")]
