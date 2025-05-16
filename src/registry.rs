@@ -230,10 +230,11 @@ impl Registry {
 
     /// Derive the root span from the given key and register with it.
     ///
-    /// This is a convenience method for `register(key, key.to_root_span())`.
+    /// This is a convenience method for `self.register(key, key.to_root_span())`. See
+    /// [`Registry::register`] for more details.
     pub fn register_root(&self, key: impl Key + ToRootSpan) -> TreeRoot {
-        let span = key.to_root_span();
-        self.register(key, span)
+        let root_span = key.to_root_span();
+        self.register(key, root_span)
     }
 
     /// Register an anonymous await-tree without specifying a key. Returns a [`TreeRoot`] that can

@@ -88,7 +88,7 @@ pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Regis
 pub use root::TreeRoot;
 pub use span::{Span, SpanExt};
 #[cfg(feature = "tokio")]
-pub use spawn::{spawn, spawn_anonymous};
+pub use spawn::{spawn, spawn_anonymous, spawn_root};
 
 #[doc(hidden)]
 pub mod __private {
