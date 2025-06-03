@@ -84,11 +84,11 @@ mod spawn;
 pub use context::{current_tree, Tree};
 pub use future::Instrumented;
 pub use global::init_global_registry;
-pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry};
+pub use registry::{AnyKey, Config, ConfigBuilder, ConfigBuilderError, Key, Registry, ToRootSpan};
 pub use root::TreeRoot;
 pub use span::{Span, SpanExt};
 #[cfg(feature = "tokio")]
-pub use spawn::{spawn, spawn_anonymous};
+pub use spawn::{spawn, spawn_anonymous, spawn_root};
 
 #[doc(hidden)]
 pub mod __private {

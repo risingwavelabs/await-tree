@@ -19,7 +19,7 @@ use std::future::Future;
 
 use tokio::task::JoinHandle;
 
-use crate::{Key, Registry, Span};
+use crate::{Key, Registry, Span, ToRootSpan};
 
 /// Spawns a new asynchronous task instrumented with the given root [`Span`], returning a
 /// [`JoinHandle`] for it.
@@ -37,6 +37,20 @@ where
     } else {
         tokio::spawn(future)
     }
+}
+
+/// Spawns a new asynchronous task instrumented with the root span derived from the given key,
+/// returning a [`JoinHandle`] for it.
+///
+/// This is a convenience function for `spawn(key, key.to_root_span(), future)`. See [`spawn`] for
+/// more details.
+pub fn spawn_root<T>(key: impl Key + ToRootSpan, future: T) -> JoinHandle<T::Output>
+where
+    T: Future + Send + 'static,
+    T::Output: Send + 'static,
+{
+    let root_span = key.to_root_span();
+    spawn(key, root_span, future)
 }
 
 /// Spawns a new asynchronous task instrumented with the given root [`Span`], returning a

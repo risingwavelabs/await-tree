@@ -52,6 +52,13 @@ impl<T> Key for T where T: Hash + Eq + Debug + Send + Sync + 'static {}
 trait ObjKey: DynHash + DynEq + Debug + Send + Sync + 'static {}
 impl<T> ObjKey for T where T: DynHash + DynEq + Debug + Send + Sync + 'static {}
 
+/// A trait for types that can be converted to a [`Span`] that can be used as the root of an
+/// await-tree.
+pub trait ToRootSpan {
+    /// Convert the type to a [`Span`] that can be used as the root of an await-tree.
+    fn to_root_span(&self) -> Span;
+}
+
 /// Key type for anonymous await-trees.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct AnonymousKey(ContextId);
@@ -211,13 +218,23 @@ impl Registry {
         }
     }
 
-    /// Register with given key. Returns a [`TreeRoot`] that can be used to instrument a future.
+    /// Register with given key and root span. Returns a [`TreeRoot`] that can be used to instrument
+    /// a future.
     ///
     /// If the key already exists, a new [`TreeRoot`] is returned and the reference to the old
     /// [`TreeRoot`] is dropped.
     pub fn register(&self, key: impl Key, root_span: impl Into<Span>) -> TreeRoot {
         let context = Arc::new(TreeContext::new(root_span.into(), self.config().verbose));
         self.register_inner(key, context)
+    }
+
+    /// Derive the root span from the given key and register with it.
+    ///
+    /// This is a convenience method for `self.register(key, key.to_root_span())`. See
+    /// [`Registry::register`] for more details.
+    pub fn register_root(&self, key: impl Key + ToRootSpan) -> TreeRoot {
+        let root_span = key.to_root_span();
+        self.register(key, root_span)
     }
 
     /// Register an anonymous await-tree without specifying a key. Returns a [`TreeRoot`] that can
