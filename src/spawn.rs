@@ -21,6 +21,52 @@ use tokio::task::JoinHandle;
 
 use crate::{Key, Registry, Span, ToRootSpan};
 
+impl Registry {
+    /// Spawns a new asynchronous task instrumented with the given root [`Span`], returning a
+    /// [`JoinHandle`] for it.
+    ///
+    /// The spawned task will be registered in the this registry.
+    pub fn spawn<T>(
+        &self,
+        key: impl Key,
+        root_span: impl Into<Span>,
+        future: T,
+    ) -> JoinHandle<T::Output>
+    where
+        T: Future + Send + 'static,
+        T::Output: Send + 'static,
+    {
+        tokio::spawn(self.register(key, root_span).instrument(future))
+    }
+
+    /// Spawns a new asynchronous task instrumented with the root span derived from the given key,
+    /// returning a [`JoinHandle`] for it.
+    ///
+    /// The spawned task will be registered in the this registry.
+    ///
+    /// This is a convenience method for `self.spawn(key, key.to_root_span(), future)`.
+    pub fn spawn_root<T>(&self, key: impl Key + ToRootSpan, future: T) -> JoinHandle<T::Output>
+    where
+        T: Future + Send + 'static,
+        T::Output: Send + 'static,
+    {
+        let root_span = key.to_root_span();
+        self.spawn(key, root_span, future)
+    }
+
+    /// Spawns a new asynchronous task instrumented with the given root [`Span`], returning a
+    /// [`JoinHandle`] for it.
+    ///
+    /// The spawned task will be registered in the this registry anonymously.
+    pub fn spawn_anonymous<T>(&self, root_span: impl Into<Span>, future: T) -> JoinHandle<T::Output>
+    where
+        T: Future + Send + 'static,
+        T::Output: Send + 'static,
+    {
+        tokio::spawn(self.register_anonymous(root_span).instrument(future))
+    }
+}
+
 /// Spawns a new asynchronous task instrumented with the given root [`Span`], returning a
 /// [`JoinHandle`] for it.
 ///
@@ -33,7 +79,7 @@ where
     T::Output: Send + 'static,
 {
     if let Some(registry) = Registry::try_current() {
-        tokio::spawn(registry.register(key, root_span).instrument(future))
+        registry.spawn(key, root_span, future)
     } else {
         tokio::spawn(future)
     }
@@ -41,6 +87,10 @@ where
 
 /// Spawns a new asynchronous task instrumented with the root span derived from the given key,
 /// returning a [`JoinHandle`] for it.
+///
+/// The spawned task will be registered in the current [`Registry`](crate::Registry) returned by
+/// [`Registry::try_current`] with the given [`Key`], if it exists. Otherwise, this is equivalent to
+/// [`tokio::spawn`].
 ///
 /// This is a convenience function for `spawn(key, key.to_root_span(), future)`. See [`spawn`] for
 /// more details.
@@ -65,7 +115,7 @@ where
     T::Output: Send + 'static,
 {
     if let Some(registry) = Registry::try_current() {
-        tokio::spawn(registry.register_anonymous(root_span).instrument(future))
+        registry.spawn_anonymous(root_span, future)
     } else {
         tokio::spawn(future)
     }
