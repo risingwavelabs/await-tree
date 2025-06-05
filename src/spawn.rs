@@ -45,7 +45,11 @@ impl Registry {
     /// The spawned task will be registered in the this registry.
     ///
     /// This is a convenience method for `self.spawn(key, key.to_root_span(), future)`.
-    pub fn spawn_root<T>(&self, key: impl Key + ToRootSpan, future: T) -> JoinHandle<T::Output>
+    pub fn spawn_derived_root<T>(
+        &self,
+        key: impl Key + ToRootSpan,
+        future: T,
+    ) -> JoinHandle<T::Output>
     where
         T: Future + Send + 'static,
         T::Output: Send + 'static,
@@ -94,7 +98,7 @@ where
 ///
 /// This is a convenience function for `spawn(key, key.to_root_span(), future)`. See [`spawn`] for
 /// more details.
-pub fn spawn_root<T>(key: impl Key + ToRootSpan, future: T) -> JoinHandle<T::Output>
+pub fn spawn_derived_root<T>(key: impl Key + ToRootSpan, future: T) -> JoinHandle<T::Output>
 where
     T: Future + Send + 'static,
     T::Output: Send + 'static,
