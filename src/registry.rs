@@ -23,7 +23,7 @@ use weak_table::WeakValueHashMap;
 
 use crate::context::{ContextId, Tree, TreeContext};
 use crate::obj_utils::{DynEq, DynHash};
-use crate::{Span, TreeRoot};
+use crate::{span, Span, TreeRoot};
 
 /// Configuration for an await-tree registry, which affects the behavior of all await-trees in the
 /// registry.
@@ -57,6 +57,12 @@ impl<T> ObjKey for T where T: DynHash + DynEq + Debug + Send + Sync + 'static {}
 pub trait ToRootSpan {
     /// Convert the type to a [`Span`] that can be used as the root of an await-tree.
     fn to_root_span(&self) -> Span;
+}
+
+impl<T: Display> ToRootSpan for T {
+    fn to_root_span(&self) -> Span {
+        span!("{self}")
+    }
 }
 
 /// Key type for anonymous await-trees.
@@ -232,7 +238,7 @@ impl Registry {
     ///
     /// This is a convenience method for `self.register(key, key.to_root_span())`. See
     /// [`Registry::register`] for more details.
-    pub fn register_root(&self, key: impl Key + ToRootSpan) -> TreeRoot {
+    pub fn register_derived_root(&self, key: impl Key + ToRootSpan) -> TreeRoot {
         let root_span = key.to_root_span();
         self.register(key, root_span)
     }
