@@ -26,6 +26,11 @@ async fn fetch_data(id: u32) -> String {
     format!("data_{}", id)
 }
 
+#[instrument(long_running, verbose, "complex_task({}, {})", name, value)]
+async fn complex_task(name: &str, value: i32) -> String {
+    format!("{}: {}", name, value)
+}
+
 #[instrument]
 async fn simple_function() -> String {
     "hello".to_string()
@@ -67,6 +72,36 @@ async fn foo(arg1: i32, arg2: String) {
 - **No argument parsing**: Format arguments are passed directly to `await_tree::span!()` without modification
 - **Function name fallback**: If no arguments are provided, uses the function name as the span name
 - **Preserves function attributes**: All function attributes and visibility modifiers are preserved
+- **Method chaining**: Support for chaining any method calls on the span
+
+### Method Chaining
+
+You can chain method calls on the span by including identifiers before the format arguments:
+
+```rust
+// Chain span methods
+#[instrument(long_running, "slow_task")]
+async fn slow_task() { /* ... */ }
+
+// Chain multiple methods
+#[instrument(long_running, verbose, "complex_task({})", id)]
+async fn complex_task(id: u32) { /* ... */ }
+
+// Method calls without format args
+#[instrument(long_running, verbose)]
+async fn keywords_only() { /* ... */ }
+
+// Any method name works (will fail at compile time if method doesn't exist)
+#[instrument(custom_attribute, "task")]
+async fn custom_task() { /* ... */ }
+```
+
+The identifiers are processed in order and result in method calls on the span:
+- `long_running` → `.long_running()`
+- `verbose` → `.verbose()`
+- `custom_attribute` → `.custom_attribute()`
+
+If a method doesn't exist on the `Span` type, the code will fail to compile with a clear error message.
 
 ## Requirements
 

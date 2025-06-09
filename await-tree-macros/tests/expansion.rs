@@ -40,3 +40,48 @@ async fn test_no_args_expansion() {
     let result = no_args_function().await;
     assert_eq!(result, "success");
 }
+
+// Test with long_running keyword
+#[instrument(long_running, "long_running_task({})", id)]
+async fn long_running_task(id: u32) -> u32 {
+    id * 10
+}
+
+// Test with verbose keyword
+#[instrument(verbose, "verbose_task")]
+async fn verbose_task() -> String {
+    "verbose".to_string()
+}
+
+// Test with both keywords
+#[instrument(long_running, verbose, "complex_task({}, {})", name, value)]
+async fn complex_task(name: &str, value: i32) -> String {
+    format!("{}: {}", name, value)
+}
+
+// Test with keywords but no format args
+#[instrument(long_running, verbose)]
+async fn keywords_only_task() -> i32 {
+    42
+}
+
+#[tokio::test]
+async fn test_keywords() {
+    let result = long_running_task(5).await;
+    assert_eq!(result, 50);
+
+    let result = verbose_task().await;
+    assert_eq!(result, "verbose");
+
+    let result = complex_task("test", 123).await;
+    assert_eq!(result, "test: 123");
+
+    let result = keywords_only_task().await;
+    assert_eq!(result, 42);
+}
+
+// Note: The macro now accepts any identifiers as method names.
+// If the methods don't exist on Span, it will fail at compile time, which is the desired behavior.
+// For example, this would fail to compile:
+// #[instrument(custom_method, another_method, "arbitrary_methods")]
+// async fn arbitrary_methods_task() -> String { "this compiles".to_string() }

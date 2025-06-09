@@ -16,7 +16,52 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, ItemFn};
+use syn::{parse_macro_input, Ident, ItemFn, Token};
+
+/// Parse the attribute arguments to extract method calls and format args
+struct InstrumentArgs {
+    method_calls: Vec<Ident>,
+    format_args: Option<proc_macro2::TokenStream>,
+}
+
+impl syn::parse::Parse for InstrumentArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mut method_calls = Vec::new();
+        let mut format_args = None;
+
+        // Parse identifiers first (these will become method calls)
+        while input.peek(Ident) {
+            // Look ahead to see if this looks like a method call identifier
+            let fork = input.fork();
+            let ident: Ident = fork.parse()?;
+
+            // Check if the next token after the identifier is a comma or end
+            // If it's something else (like a parenthesis or string), treat as format args
+            if fork.peek(Token![,]) || fork.is_empty() {
+                // This is a method call identifier
+                input.parse::<Ident>()?; // consume the identifier
+                method_calls.push(ident);
+                if input.peek(Token![,]) {
+                    input.parse::<Token![,]>()?;
+                }
+            } else {
+                // This looks like the start of format arguments
+                break;
+            }
+        }
+
+        // Parse remaining tokens as format arguments
+        if !input.is_empty() {
+            let remaining: proc_macro2::TokenStream = input.parse()?;
+            format_args = Some(remaining);
+        }
+
+        Ok(InstrumentArgs {
+            method_calls,
+            format_args,
+        })
+    }
+}
 
 /// Instruments an async function with await-tree spans.
 ///
@@ -32,11 +77,20 @@ use syn::{parse_macro_input, ItemFn};
 /// }
 /// ```
 ///
+/// With keywords:
+///
+/// ```rust,ignore
+/// #[await_tree::instrument(long_running, verbose, "span_name({})", arg1)]
+/// async fn foo(arg1: i32, arg2: String) {
+///     // function body
+/// }
+/// ```
+///
 /// The above will be expanded to:
 ///
 /// ```rust,ignore
 /// async fn foo(arg1: i32, arg2: String) {
-///     let span = await_tree::span!("span_name({})", arg1);
+///     let span = await_tree::span!("span_name({})", arg1).long_running().verbose();
 ///     let fut = async move {
 ///         // original function body
 ///     };
@@ -66,16 +120,35 @@ pub fn instrument(args: TokenStream, input: TokenStream) -> TokenStream {
         .into();
     }
 
+    // Parse the arguments
+    let parsed_args = if args.is_empty() {
+        InstrumentArgs {
+            method_calls: Vec::new(),
+            format_args: None,
+        }
+    } else {
+        match syn::parse::<InstrumentArgs>(args) {
+            Ok(args) => args,
+            Err(e) => return e.to_compile_error().into(),
+        }
+    };
+
     // Extract the span format arguments
-    let span_args = if args.is_empty() {
-        // If no arguments provided, use the function name as span
+    let span_args = if let Some(format_args) = parsed_args.format_args {
+        quote! { #format_args }
+    } else {
+        // If no format arguments provided, use the function name as span
         let fn_name = &input_fn.sig.ident;
         quote! { stringify!(#fn_name) }
-    } else {
-        // Convert the raw token stream to tokens for the span! macro
-        let args_tokens = proc_macro2::TokenStream::from(args);
-        quote! { #args_tokens }
     };
+
+    // Build span creation with method calls
+    let mut span_creation = quote! { ::await_tree::span!(#span_args) };
+
+    // Chain all method calls
+    for method_name in parsed_args.method_calls {
+        span_creation = quote! { #span_creation.#method_name() };
+    }
 
     // Extract function components
     let fn_vis = &input_fn.vis;
@@ -87,7 +160,8 @@ pub fn instrument(args: TokenStream, input: TokenStream) -> TokenStream {
     let result = quote! {
         #(#fn_attrs)*
         #fn_vis #fn_sig {
-            let __at_span = ::await_tree::span!(#span_args);
+            use ::await_tree::SpanExt as _;
+            let __at_span: ::await_tree::Span = #span_creation;
             let __at_fut = async move #fn_block;
             ::await_tree::InstrumentAwait::instrument_await(__at_fut, __at_span).await
         }

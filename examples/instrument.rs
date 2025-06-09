@@ -14,23 +14,23 @@
 
 //! Example demonstrating the use of the `#[await_tree::instrument]` attribute macro.
 
-use await_tree::{init_global_registry, instrument, spawn, Registry};
+use await_tree::{init_global_registry, instrument, spawn_derived_root, ConfigBuilder, Registry};
 use std::time::Duration;
 use tokio::time::sleep;
 
-#[instrument(long_runing,"fetch_data({})", id)]
+#[instrument(long_running, "fetch_data({})", id)]
 async fn fetch_data(id: u32) -> String {
     sleep(Duration::from_millis(100)).await;
     format!("data_{}", id)
 }
 
-#[instrument("process_item({}, {})", name, value)]
+#[instrument(verbose, "process_item({}, {})", name, value)]
 async fn process_item(name: &str, value: i32) -> i32 {
     sleep(Duration::from_millis(50)).await;
     value * 2
 }
 
-#[instrument("complex_operation")]
+#[instrument(long_running, verbose, "complex_operation")]
 async fn complex_operation() -> Vec<String> {
     let mut results = Vec::new();
 
@@ -47,30 +47,30 @@ async fn complex_operation() -> Vec<String> {
 
 #[instrument]
 async fn simple_task() -> String {
-    sleep(Duration::from_millis(30)).await;
+    sleep(Duration::from_millis(100)).await;
     "simple result".to_string()
 }
 
 #[tokio::main]
 async fn main() {
     // Initialize the global registry
-    init_global_registry(Default::default());
+    init_global_registry(ConfigBuilder::default().verbose(true).build().unwrap());
 
     // Spawn tasks with instrumentation
-    spawn("complex", "complex_task", complex_operation());
-    spawn("simple", "simple_task", simple_task());
+    spawn_derived_root("complex", complex_operation());
+    spawn_derived_root("simple", simple_task());
 
     // Let the tasks run for a while
-    sleep(Duration::from_millis(200)).await;
+    sleep(Duration::from_millis(50)).await;
 
     // Print the await trees
-    if let Some(tree) = Registry::current().get("complex_task") {
+    if let Some(tree) = Registry::current().get("complex") {
         println!("Complex task tree:");
         println!("{}", tree);
         println!();
     }
 
-    if let Some(tree) = Registry::current().get("simple_task") {
+    if let Some(tree) = Registry::current().get("simple") {
         println!("Simple task tree:");
         println!("{}", tree);
     }
