@@ -90,6 +90,9 @@ pub use span::{Span, SpanExt};
 #[cfg(feature = "tokio")]
 pub use spawn::{spawn, spawn_anonymous, spawn_derived_root};
 
+#[cfg(feature = "attributes")]
+pub use await_tree_attributes::instrument;
+
 #[doc(hidden)]
 pub mod __private {
     pub use crate::span::fmt_span;

@@ -1,0 +1,21 @@
+[package]
+name = "await-tree-attributes"
+version = "0.1.0"
+edition = "2021"
+description = "Procedural attributes for await-tree instrumentation"
+repository = "https://github.com/risingwavelabs/await-tree"
+keywords = ["async", "tokio", "backtrace", "actor", "attributes"]
+categories = ["development-tools::debugging"]
+license = "Apache-2.0"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+await-tree = { path = ".." }
