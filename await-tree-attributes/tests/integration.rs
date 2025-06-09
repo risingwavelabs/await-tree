@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use await_tree_macros::instrument;
+use await_tree_attributes::instrument;
 
 // Test basic usage with format string and arguments
 #[instrument("test_function({})", arg1)]
@@ -36,8 +36,8 @@ async fn complex_function(name: &str, value: u64) -> String {
 }
 
 #[tokio::test]
-async fn test_instrument_macro() {
-    // These tests mainly verify that the macro compiles correctly
+async fn test_instrument_attribute() {
+    // These tests mainly verify that the attribute compiles correctly
     // and the functions can be called normally
 
     let result = test_function(42, "test".to_string()).await;

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Procedural macros for await-tree instrumentation.
+//! Procedural attributes for await-tree instrumentation.
 
 use proc_macro::TokenStream;
 use quote::quote;

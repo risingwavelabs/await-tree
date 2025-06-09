@@ -1,6 +1,6 @@
-# await-tree-macros
+# await-tree-attributes
 
-Procedural macros for the [`await-tree`](https://crates.io/crates/await-tree) crate.
+Procedural attributes for the [`await-tree`](https://crates.io/crates/await-tree) crate.
 
 ## Overview
 
@@ -12,7 +12,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-await-tree = { version = "0.3", features = ["macros"] }
+await-tree = { version = "0.3", features = ["attributes"] }
 ```
 
 Then use the `#[instrument]` attribute on your async functions:
@@ -37,7 +37,7 @@ async fn simple_function() -> String {
 }
 ```
 
-## Macro Expansion
+## Attribute Expansion
 
 The `#[instrument]` macro transforms your async function by:
 
@@ -107,7 +107,7 @@ If a method doesn't exist on the `Span` type, the code will fail to compile with
 
 - The macro can only be applied to `async` functions
 - You must import `InstrumentAwait` trait to use the generated code
-- The `macros` feature must be enabled in the `await-tree` dependency
+- The `attributes` feature must be enabled in the `await-tree` dependency
 
 ## License
 

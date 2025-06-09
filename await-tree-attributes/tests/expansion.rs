@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Test to verify the macro expansion works correctly.
+//! Test to verify the attribute expansion works correctly.
 
-use await_tree_macros::instrument;
+use await_tree_attributes::instrument;
 
 // Test that the macro generates the expected code structure
 #[instrument("test_expansion({})", value)]
@@ -23,8 +23,8 @@ async fn test_expansion(value: i32) -> i32 {
 }
 
 #[tokio::test]
-async fn test_macro_expansion() {
-    // This test verifies that the macro expansion compiles and runs correctly
+async fn test_attribute_expansion() {
+    // This test verifies that the attribute expansion compiles and runs correctly
     let result = test_expansion(21).await;
     assert_eq!(result, 42);
 }
@@ -80,7 +80,7 @@ async fn test_keywords() {
     assert_eq!(result, 42);
 }
 
-// Note: The macro now accepts any identifiers as method names.
+// Note: The attribute now accepts any identifiers as method names.
 // If the methods don't exist on Span, it will fail at compile time, which is the desired behavior.
 // For example, this would fail to compile:
 // #[instrument(custom_method, another_method, "arbitrary_methods")]

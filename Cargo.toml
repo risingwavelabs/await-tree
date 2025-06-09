@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "await-tree-macros"]
+members = [".", "await-tree-attributes"]
 
 [package]
 name = "await-tree"
@@ -15,10 +15,10 @@ license = "Apache-2.0"
 [features]
 serde = ["dep:serde", "flexstr/serde"]
 tokio = ["dep:tokio"]
-macros = ["dep:await-tree-macros"]
+attributes = ["dep:await-tree-attributes"]
 
 [dependencies]
-await-tree-macros = { path = "await-tree-macros", optional = true }
+await-tree-attributes = { path = "await-tree-attributes", optional = true }
 coarsetime = "0.1"
 derive_builder = "0.20"
 easy-ext = "1"
@@ -67,4 +67,4 @@ required-features = ["tokio"]
 
 [[example]]
 name = "instrument"
-required-features = ["tokio", "macros"]
+required-features = ["tokio", "attributes"]

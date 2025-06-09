@@ -1,10 +1,10 @@
 [package]
-name = "await-tree-macros"
+name = "await-tree-attributes"
 version = "0.1.0"
 edition = "2021"
-description = "Procedural macros for await-tree instrumentation"
+description = "Procedural attributes for await-tree instrumentation"
 repository = "https://github.com/risingwavelabs/await-tree"
-keywords = ["async", "tokio", "backtrace", "actor", "macros"]
+keywords = ["async", "tokio", "backtrace", "actor", "attributes"]
 categories = ["development-tools::debugging"]
 license = "Apache-2.0"
 

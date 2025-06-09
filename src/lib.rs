@@ -90,8 +90,8 @@ pub use span::{Span, SpanExt};
 #[cfg(feature = "tokio")]
 pub use spawn::{spawn, spawn_anonymous, spawn_derived_root};
 
-#[cfg(feature = "macros")]
-pub use await_tree_macros::instrument;
+#[cfg(feature = "attributes")]
+pub use await_tree_attributes::instrument;
 
 #[doc(hidden)]
 pub mod __private {

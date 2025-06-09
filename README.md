@@ -79,6 +79,22 @@ println!("{tree}");
   });
   ```
 
+- `attributes`: Enables the `#[instrument]` attribute macro for automatic instrumentation of async functions. This provides a convenient way to add await-tree spans to functions without manual instrumentation.
+
+  ```rust
+  // Enable the attributes feature in Cargo.toml
+  // await-tree = { version = "<version>", features = ["attributes"] }
+
+  // Then you can use the instrument attribute
+  use await_tree::instrument;
+
+  #[instrument("my_function({})", arg)]
+  async fn my_function(arg: i32) {
+      // Your async code here
+      work().await;
+  }
+  ```
+
 ## Compared to `async-backtrace`
 
 [`tokio-rs/async-backtrace`](https://github.com/tokio-rs/async-backtrace) is a similar crate that also provides the ability to dump the execution tree of async tasks. Here are some differences between `await-tree` and `async-backtrace`:
