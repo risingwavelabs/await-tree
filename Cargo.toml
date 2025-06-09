@@ -18,7 +18,7 @@ tokio = ["dep:tokio"]
 attributes = ["dep:await-tree-attributes"]
 
 [dependencies]
-await-tree-attributes = { path = "await-tree-attributes", optional = true }
+await-tree-attributes = { path = "await-tree-attributes", version = "0.1", optional = true }
 coarsetime = "0.1"
 derive_builder = "0.20"
 easy-ext = "1"
