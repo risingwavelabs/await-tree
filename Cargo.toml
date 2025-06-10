@@ -3,7 +3,7 @@ members = [".", "await-tree-attributes"]
 
 [package]
 name = "await-tree"
-version = "0.3.1"
+version = "0.3.2-alpha.1"
 edition = "2021"
 description = "Generate accurate and informative tree dumps of asynchronous tasks."
 repository = "https://github.com/risingwavelabs/await-tree"
@@ -18,7 +18,7 @@ tokio = ["dep:tokio"]
 attributes = ["dep:await-tree-attributes"]
 
 [dependencies]
-await-tree-attributes = { path = "await-tree-attributes", version = "0.1", optional = true }
+await-tree-attributes = { path = "await-tree-attributes", version = "0.1.0-alpha.1", optional = true }
 coarsetime = "0.1"
 derive_builder = "0.20"
 easy-ext = "1"
