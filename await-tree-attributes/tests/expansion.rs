@@ -80,6 +80,36 @@ async fn test_keywords() {
     assert_eq!(result, 42);
 }
 
+// Test with boxed keyword
+#[instrument(boxed, "boxed_task({})", value)]
+async fn boxed_task(value: i32) -> i32 {
+    value * 3
+}
+
+// Test with boxed and other keywords
+#[instrument(boxed, long_running, "boxed_long_running_task")]
+async fn boxed_long_running_task() -> String {
+    "boxed and long running".to_owned()
+}
+
+// Test with boxed but no format args
+#[instrument(boxed)]
+async fn boxed_no_args_task() -> i32 {
+    100
+}
+
+#[tokio::test]
+async fn test_boxed_keyword() {
+    let result = boxed_task(7).await;
+    assert_eq!(result, 21);
+
+    let result = boxed_long_running_task().await;
+    assert_eq!(result, "boxed and long running");
+
+    let result = boxed_no_args_task().await;
+    assert_eq!(result, 100);
+}
+
 // Note: The attribute now accepts any identifiers as method names.
 // If the methods don't exist on Span, it will fail at compile time, which is the desired behavior.
 // For example, this would fail to compile:
