@@ -19,17 +19,20 @@ use quote::quote;
 use syn::{parse_macro_input, Ident, ItemFn, Token};
 
 /// Parse the attribute arguments to extract method calls and format args
+#[derive(Default)]
 struct InstrumentArgs {
     method_calls: Vec<Ident>,
     format_args: Option<proc_macro2::TokenStream>,
+    boxed: bool,
 }
 
 impl syn::parse::Parse for InstrumentArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut method_calls = Vec::new();
         let mut format_args = None;
+        let mut boxed = false;
 
-        // Parse identifiers first (these will become method calls)
+        // Parse identifiers first (these will become method calls or special keywords)
         while input.peek(Ident) {
             // Look ahead to see if this looks like a method call identifier
             let fork = input.fork();
@@ -38,9 +41,16 @@ impl syn::parse::Parse for InstrumentArgs {
             // Check if the next token after the identifier is a comma or end
             // If it's something else (like a parenthesis or string), treat as format args
             if fork.peek(Token![,]) || fork.is_empty() {
-                // This is a method call identifier
+                // This is a method call identifier or special keyword
                 input.parse::<Ident>()?; // consume the identifier
-                method_calls.push(ident);
+
+                // Check for special "boxed" keyword
+                if ident == "boxed" {
+                    boxed = true;
+                } else {
+                    method_calls.push(ident);
+                }
+
                 if input.peek(Token![,]) {
                     input.parse::<Token![,]>()?;
                 }
@@ -59,6 +69,7 @@ impl syn::parse::Parse for InstrumentArgs {
         Ok(InstrumentArgs {
             method_calls,
             format_args,
+            boxed,
         })
     }
 }
@@ -77,10 +88,20 @@ impl syn::parse::Parse for InstrumentArgs {
 /// }
 /// ```
 ///
-/// With keywords:
+/// With attributes on the span:
 ///
 /// ```rust,ignore
 /// #[await_tree::instrument(long_running, verbose, "span_name({})", arg1)]
+/// async fn foo(arg1: i32, arg2: String) {
+///     // function body
+/// }
+/// ```
+///
+/// With the `boxed` keyword to `Box::pin` the function body before calling `instrument_await`,
+/// which can help reducing the stack usage if you encounter stack overflow:
+///
+/// ```rust,ignore
+/// #[await_tree::instrument(boxed, "span_name({})", arg1)]
 /// async fn foo(arg1: i32, arg2: String) {
 ///     // function body
 /// }
@@ -94,6 +115,7 @@ impl syn::parse::Parse for InstrumentArgs {
 ///     let fut = async move {
 ///         // original function body
 ///     };
+///     let fut = Box::pin(fut); // if `boxed` is specified
 ///     fut.instrument_await(span).await
 /// }
 /// ```
@@ -122,10 +144,7 @@ pub fn instrument(args: TokenStream, input: TokenStream) -> TokenStream {
 
     // Parse the arguments
     let parsed_args = if args.is_empty() {
-        InstrumentArgs {
-            method_calls: Vec::new(),
-            format_args: None,
-        }
+        InstrumentArgs::default()
     } else {
         match syn::parse::<InstrumentArgs>(args) {
             Ok(args) => args,
@@ -157,12 +176,16 @@ pub fn instrument(args: TokenStream, input: TokenStream) -> TokenStream {
     let fn_attrs = &input_fn.attrs;
 
     // Generate the instrumented function
+    let boxed =
+        (parsed_args.boxed).then(|| quote! { let __at_fut = ::std::boxed::Box::pin(__at_fut); });
+
     let result = quote! {
         #(#fn_attrs)*
         #fn_vis #fn_sig {
             use ::await_tree::SpanExt as _;
             let __at_span: ::await_tree::Span = #span_creation;
             let __at_fut = async move #fn_block;
+            #boxed
             ::await_tree::InstrumentAwait::instrument_await(__at_fut, __at_span).await
         }
     };
